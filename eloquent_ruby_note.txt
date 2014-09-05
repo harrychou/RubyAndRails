@@ -1,0 +1,737 @@
+Eloquent Ruby Note
+
+PART I: The Basics 1
+
+Chapter 1: Write Code That Looks Like Ruby 3
+
+- use two spaces, never tabs
+
+class Document
+  attr_accessor :title, :author, :content
+
+  def initialize(title, author, content) 
+    @title = title
+    @author = author
+    @content = content
+  end
+
+  def words
+    @content.split
+  end 
+
+  def word_count
+    words.size 
+  end
+end
+
+- oneliner comment is OK, if it adds more info
+
+  return 0 if divisor == 0 # Avoid division by zero
+
+- camels for Classes, snakes everywhere else
+  
+  * for constant:
+  ALL_UPPER_CASE = 2
+
+- parentheses? optional, but sometimes forbidden
+
+  * most Ruby programmer do use parenthesis
+  * but not for simple or common function calls, or calls without parameters
+
+  puts 'Hello Word'
+
+  def words
+    @content.split
+  end 
+
+  * generally, don't use parenthesis for conditions in control statements
+
+  if word.size > 100
+    puts 'too long'
+  end
+
+- use semicolon to cram up multiple lines
+
+  * generally, don't do it
+  * only do it for simple places
+
+  def method_to_be_overriden; end
+
+- for code blocks (code between braces or use do ... end) 
+
+  * for simeple one line code block, just fold it 
+
+  10.times { |n| puts "The number is #{n}" }
+
+  * for more than one line code block, use do ... end 
+  
+  10.times do |n|
+    puts "The number is #{n}"
+    puts "Twice the number is #{n*2}"
+  end
+
+
+Chapter 2: Choose the Right Control Structure 17
+
+- If, Unless, While, and Until 17
+  
+  * if this then do that
+  * do this unless that
+
+  * 'if' is revers of 'unless'
+    - 'if not xxx' is the same as 'unless xxx'
+    - unless sometimess take less mental energy to process
+
+  * if <--> unless
+    while <--> until
+  * ruby uses every opportunities to improve the 'readability' of the code
+
+- Use the Modifier Forms Where Appropriate 19
+
+  * do_something if xxx
+  * do_something unless xxx
+  * do_something while xxx
+  * do_something until xxx
+  * this is call 'Modifier form'
+
+- Use each, Not for 20
+
+  * in other languages, we use 'for'; for ruby, use 'each'
+
+  fonts = [ 'courier', 'times roman', 'helvetica' ]
+
+  for font in fonts
+    puts font
+  end  
+
+  # same as
+  fonts.each { |font| puts font }
+  # or
+  fonts.each do |font| 
+    puts font 
+  end
+
+  * Ruby actually defines the for loop in terms of the each method:
+
+- A Case of Programming Logic 21
+
+    # used as switch statement
+    title = 'Clean Code'
+    case title
+    when 'War And Peace'
+      puts 'Tolstoy'
+    when 'Romeo And Juliet'
+      puts 'Shakespeare'
+    else
+      puts "Don't know"
+    end
+
+    # used to assign value
+    author = case title
+             when 'War And Peace'
+               'Tolstoy'
+             when 'Romeo And Juliet'
+               'Shakespeare'
+             else
+               "Don't know"
+             end
+    expect(author).to eq("Don't know")
+
+    # meke it more compact
+    author = case title
+             when 'War And Peace' then 'Tolstoy'
+             when 'Romeo And Juliet' then 'Shakespeare'
+             else "Don't know"
+             end 
+
+  * case statement use === for comparison, so it can be used for identify instances
+
+    obj = SomeClass.new
+    
+    case obj
+    when SomeClass
+      puts 'it is RubySyntax'
+    else 
+      puts 'no no ...'         
+    end
+
+  * case statement to detect regular expression match
+
+    case title
+    when /War And .*/
+      puts 'Maybe Tolstoy?'
+    when /Romeo And .*/
+      puts 'Maybe Shakespeare?'
+    else
+      puts 'Absolutely no idea...'
+    end
+
+
+- Staying Out of Trouble 23
+
+  * in Ruby, only false and nil are treated as false
+  * even empty space, the string 'false' and 0 are 'truthy'
+  * even a variable is 'truthy', you cannot compare it to true
+    do_something if flag == true
+    vs. do_something if flag
+  * on the other hand, if you are testing for nil or false, be explcit
+    if something.nil?
+      ...
+    end
+
+- In the Wild 25
+
+  * to initialize something if it is nil, use ||=
+    @first_name = '' unless @first_name
+    is the same as
+    @first_name ||= ''
+    which is
+    @first_name = @first_name || ''
+  * ||= has the danger of overwrite the value if the value is false
+    it is looking for nil, but accidentally triggered by false
+  * Don’t try to use ||= to initialize things to booleans
+
+Chapter 3: Take Advantage of Ruby’s Smart Collections 29
+
+  * hashes and arrays
+  * set is a collection of unordered values with no duplicates
+
+- Literal Shortcuts 29
+
+  * use %w{...} for arrays
+    poem_words = [ 'twinkle', 'little', 'star', 'how', 'I', 'wonder' ]
+    is the same as
+    poem_words = %w{ twinkle little star how I wonder }
+  * use hash rockets => for hash
+    freq = { "I" => 1, "don't" => 1, "like" => 1, "spam" => 963 }
+  * for most case, the key is symbol instead of string
+    book_info = { :first_name => 'Russ', :last_name => 'Olsen' }
+    or even simpler
+    book_info = { first_name: 'Russ', last_name: 'Olsen' }
+
+- Instant Arrays and Hashes from Method Calls 30
+
+  * create/retrieve collections from method call
+
+    def take_all_args ( *args )
+      args
+    end
+
+    def take_at_least_two( first_arg, *middle_args, last_arg )
+      [first_arg] + middle_args + [last_arg]
+    end
+
+  * splat: “splat names” , use *args instead of args
+    the caller don't have to specify the array
+
+    method_call 'one', 'two', 'three'
+
+    instead of 
+
+    method_call ['one','two','three']
+
+  * splat can work the other way
+    when calling a method (arg1, arg2, arg3) with args = ['one', 'two', 'three']
+
+    method_call(*args)
+
+  * for method taking a hash
+
+    def load_font( specification_hash )
+      # Load a font according to specification_hash[:name] etc.
+    end
+
+    you can call with hash
+
+    load_font( { :name => 'times roman', :size => 12 })
+
+    or, because the last arg is a hash
+
+    load_font( :name => 'times roman', :size => 12 )
+
+    even simpler (common in Rails)
+
+    load_font :name => 'times roman', :size => 12 
+
+- Running Through Your Collection 33
+
+  * use each instead of for
+  * for hash
+    movie = { title: '2001', genre: 'sci fi', rating: 10 }
+    movie.each { |entry| pp entry } #pp is pretty-print
+    or
+    movie.each { |name, value| puts "#{name} => #{value}"}
+  * Array API has very extensive methods, such as
+    - find_index
+    def index_for( word )
+      words.find_index { |this_word| word == this_word }
+    end
+    - map: transforming the contents of a collection
+en mass
+      lower_case_words = doc.words.map { |word| word.downcase }
+    - inject: in addition to each element, you get the current result
+      from this: 
+      def average_word_length
+        total = 0.0
+        words.each { |word| total += word.size }
+        total / word_count
+      end
+      to this: 
+      def average_word_length
+        total = words.inject(0.0){ |result, word| word.size + result}
+        # 0.0 is the initial value of result
+        total / word_count
+      end
+
+- Beware the Bang! 36
+
+  * some array method change the current instance, while some methods return a new instance
+  * methods with ! signals that it will change the current instance
+    - reverse vs. reverse!
+    - sort vs. sort!
+  * in general, method names end with ! means 'dangerour or unexpected result'
+
+- Rely on the Order of Your Hashes 38
+
+  * Ruby arrays and hashes are both ordered.
+  * adding an item to hash will add to the end of the array
+
+- In the Wild 38
+
+  * ruby try to use simple collections instead of a new class
+  * call File.readlines(file_path) gets a simple array full of strings.
+  * XmlSimple gem : use simple collection to represent Xml data
+    require 'xmlsimple'
+    data = XmlSimple.xml_in('dc.xml')
+
+- Staying Out of Trouble 40
+
+  * don't change the collection (delete or add elements) while traversing elements
+  * this will instantly created 24,602 new elements of array, most of them set to nil
+    array = []
+    array[24601] = "Jean Valjean"
+  * choose the right collection for the job
+    require 'set'
+    word_set = Set.new( words )
+  
+- Wrapping Up 42
+
+Chapter 4: Take Advantage of Ruby’s Smart Strings 43
+
+- Coming Up with a String 44
+
+  * single quote : limited
+  * double quote
+    - can insert special characters such as \t \n
+    - interpolation #{...}
+  * %q{...} %q(...) or %q<...>
+  * %Q .... will behave more like double quote
+  * all literal strings can span multiple lines
+    - to avoid being interpreted as new line use \
+  * here document
+
+- Another API to Master 47
+
+  * String API methods
+    - chomp: take out one newline charater from the end
+    - chop : take out one character
+    - upcase, downcase, swapcase
+    - sub and gsub (global)
+      'It is warm outside'.sub( 'warm', 'cold' )
+    - split : turn string into word array
+    - index
+  * most methods return new string, but adding ! will alter the current string
+
+- The String: A Place for Your Lines, Characters, and Bytes 49
+
+  * each_char : get each char one at a time
+  * each_byte : get each char as byte
+  * each_line : get each line one at a time
+  * since each can mean a lot of thing, String does not have 'each' method
+
+- In the Wild 50
+
+  * string manipulation is everywhere
+    - html_escape in RSS library make a string suitable for HTML or XML
+  * Rails use string processing to intelligently know when to infer CamelCase or snake_case
+  * also Rails use gsub for pluraization of words
+
+- Staying Out of Trouble 51
+
+  * Ruby string is mutable, so if variable assigned, it still point to the same string
+    - try to create a new string everytime (use upcase instead of upcase!)
+  * take usage of string indexing
+    first_name[first_name.size - 1]
+    is the same as
+    first_name[-1]
+    "abcde"[3..4] # => return de
+
+- Wrapping Up 52
+
+Chapter 5: Find the Right String with Regular Expressions 53
+
+  Ruby programmers do A LOT of regular expression
+
+- Matching One Character at a Time 54
+
+  * usually match character by character
+  * . will match any single-character string including r and % and ~
+  * \. will match .
+
+- Sets, Ranges, and Alternatives 55
+
+  * [0123456789] will match any single digit
+  * [0123456789abcdef] will match any single hexadecimal deigit
+  * use range
+    [0-9a-f] ==> [0-9abcdef] ==> [0123456789abcdef]
+    [0-9a-zA-Z_] ==> match any thing alphanumeric plus _
+  * other special character
+    - \d
+    - \w
+    - \s any white space space/tab/newline
+  * alternative
+    - A\.M\.|AM|P\.M\.|PM ==> will match AM/PM/A.M./P.M.
+
+- The Regular Expression Star 57
+
+  * * : zero or more
+
+- Regular Expressions in Ruby 58
+
+  * regular expression literal
+    /\d\d:\d\d (AM|PM)/
+  * to match
+    /\d\d:\d\d (AM|PM)/ =~ '10:24 PM'
+    or, '10:24 PM' =~ /\d\d:\d\d (AM|PM)/
+    - will return 0, means it matches at the index of zero
+    - if no match will return nil
+  * to match case insensitively
+    puts "It matches!" if /AM/i =~ 'am'
+  * a lot of string methods accepts regularexpression as search string
+    @content.gsub!( /\d\d:\d\d (AM|PM)/, '**:** **' )
+
+- Beginnings and Endings 60
+
+  * \A begining of text
+  * \z end of text
+  * ^ : the beginning of the string or the beginning of any line within the string.
+  * $
+  * to match across multiple like use /m
+    /^Once upon a time.*happily ever after\.$/m
+
+- In the Wild 62
+  
+  * Time class in time.rb
+  * zone_offset use regular expression to figure out the timezone
+    if /\A([+-])(\d\d):?(\d\d)\z/ =~ zone ... matches stuff like +05 or -05:00 as timezone
+
+- Staying Out of Trouble 63
+
+  * =~
+  * return zero means it matches at the beginning of the string
+
+- Wrapping Up 64
+
+Chapter 6: Use Symbols to Stand for Something 65
+
+- The Two Faces of Strings 65
+
+  * Symbols are really just strings
+  * a way to do magic string or enum
+    book = Book.find(:all)
+
+- Not Quite a String 66
+
+  * string has two meanings:
+    - the characters inside
+    - the meaning of this specific arrangement of characters
+      book = Book.find(:all)
+      the :all here give us a special meaning of 'finding all books'
+  * if you are using some characters to stand for something in your code, you probably are not very interested in messing with the actual character
+
+- Optimized to Stand for Something 67
+
+  * symbol is optimized to stand for something
+  * there can only ever be one instance of any given symbol
+    very good for comparison
+    a = :all
+    b = a
+    c = :all    
+    # True! All true!
+    a == c
+    a === c
+    a.eql?(c)
+    a.equal?(c)
+  * symbols are immutable
+  * these characters make symbols ideal for hash keys
+
+- In the Wild 69
+
+  * to_s method turn a symbol to string
+  * to_sym turns a string to a symbol
+  * all objects has a public_methods method
+    - returns a list of strings in > Ruby 2
+    - returns a list of symbols in < Ruby 2
+
+- Staying Out of Trouble 70
+
+  * Use symbols when you simply want an intelligible thing that stands for something in your code
+  * sometimes people will forget to use symbols as hash keys --> always use symbos
+    ruby has a HashWithIndifferentAccess class try to mitigate the confusion
+
+- Wrapping Up 71
+
+  * symbols and strings: two siblings with different talents
+
+Chapter 7: Treat Everything Like an Object—Because Everything Is 73
+
+- A Quick Review of Classes, Instances, and Methods 74
+
+  * Class has two purposes
+    - a place to define methods
+    - a factory to create new instances
+  * self : default object for instances
+  * don't use self.method if method will do
+  * use < for inheritance
+    class RomanceNovel < Document
+      # Lot's of steamy stuff omitted...
+    end
+  * all classes are subclasses of Object class
+
+- Objects All the Way Down 76
+
+  * -3.abs
+  * "abc".upcase
+  * :abc.length
+  * /abc/.class
+
+The Importance of Being an Object 77
+Public, Private, and Protected 79
+In the Wild 81
+Staying Out of Trouble 82
+Wrapping Up 84
+
+Chapter 8: Embrace Dynamic Typing 85
+Shorter Programs, But Not the Way You Think 85
+Extreme Decoupling 89
+Required Ceremony Versus Programmer-Driven Clarity 92
+Staying Out of Trouble 93
+In the Wild 94
+Wrapping Up 96
+
+Chapter 9: Write Specs! 97
+Test::Unit: When Your Documents Just Have to Work 98
+A Plethora of Assertions 101
+Don’t Test It, Spec It! 101
+A Tidy Spec Is a Readable Spec 104
+Easy Stubs 105
+. . . And Easy Mocks 107
+In the Wild 108
+Staying Out of Trouble 110
+Wrapping Up 113
+
+PART II: Classes, Modules, and Blocks 115
+
+Chapter 10: Construct Your Classes from Short, Focused Methods 117
+Compressing Specifications 117
+Composing Methods for Humans 121
+Composing Ruby Methods 122
+One Way Out? 123
+Staying Out of Trouble 126
+In the Wild 127
+Wrapping Up 128
+
+Chapter 11: Define Operators Respectfully 129
+Defining Operators in Ruby 129
+A Sampling of Operators 131
+Operating Across Classes 134
+Staying Out of Trouble 135
+In the Wild 137
+Wrapping Up 139
+
+Chapter 12: Create Classes That Understand Equality 141
+An Identifier for Your Documents 141
+An Embarrassment of Equality 142
+Double Equals for Everyday Use 143
+Broadening the Appeal of the == Method 145
+Well-Behaved Equality 146
+Triple Equals for Case Statements 149
+Hash Tables and the eql? Method 150
+Building a Well-Behaved Hash Key 152
+Staying Out of Trouble 153
+In the Wild 154
+Wrapping Up 156
+
+Chapter 13: Get the Behavior You Need with Singleton and
+Class Methods 157
+A Stubby Puzzle 158
+A Hidden, but Real Class 160
+Class Methods: Singletons in Plain Sight 162
+In the Wild 164
+Staying Out of Trouble 165
+Wrapping Up 167
+
+Chapter 14: Use Class Instance Variables 169
+A Quick Review of Class Variables 169
+Wandering Variables 171
+Getting Control of the Data in Your Class 174
+Class Instance Variables and Subclasses 175
+Adding Some Convenience to Your Class Instance Variables 176
+In the Wild 177
+Staying Out of Trouble 179
+Wrapping Up 179
+
+Chapter 15: Use Modules as Name Spaces 181
+A Place for Your Stuff, with a Name 181
+A Home for Those Utility Methods 184
+Building Modules a Little at a Time 185
+Treat Modules Like the Objects That They Are 186
+Staying Out of Trouble 189
+In the Wild 190
+Wrapping Up 191
+
+Chapter 16: Use Modules as Mixins 193
+Better Books with Modules 193
+Mixin Modules to the Rescue 195
+Extending a Module 197
+Staying Out of Trouble 198
+In the Wild 202
+Wrapping Up 205
+
+Chapter 17: Use Blocks to Iterate 207
+A Quick Review of Code Blocks 207
+One Word after Another 209
+As Many Iterators as You Like 210
+Iterating over the Ethereal 211
+Enumerable: Your Iterator on Steroids 213
+Staying Out of Trouble 215
+In the Wild 217
+Wrapping Up 218
+
+Chapter 18: Execute Around with a Block 219
+Add a Little Logging 219
+When It Absolutely Must Happen 224
+Setting Up Objects with an Initialization Block 225
+Dragging Your Scope along with the Block 225
+Carrying the Answers Back 227
+Staying Out of Trouble 228
+In the Wild 229
+Wrapping Up 231
+
+Chapter 19: Save Blocks to Execute Later 233
+Explicit Blocks 233
+The Call Back Problem 234
+Banking Blocks 236
+Saving Code Blocks for Lazy Initialization 237
+Instant Block Objects 239
+Staying Out of Trouble 240
+In the Wild 243
+Wrapping Up 244
+
+PART III: Metaprogramming 247
+
+Chapter 20: Use Hooks to Keep Your Program Informed 249
+Waking Up to a New Subclass 250
+Modules Want To Be Heard Too 253
+Knowing When Your Time Is Up 255
+. . . And a Cast of Thousands 256
+Staying Out of Trouble 257
+In the Wild 259
+Wrapping Up 261
+
+Chapter 21: Use method_missing for Flexible Error Handling 263
+Meeting Those Missing Methods 264
+Handling Document Errors 266
+Coping with Constants 267
+In the Wild 268
+Staying Out of Trouble 270
+Wrapping Up 271
+
+Chapter 22: Use method_missing for Delegation 273
+The Promise and Pain of Delegation 274
+The Trouble with Old-Fashioned Delegation 275
+The method_missing Method to the Rescue 277
+More Discriminating Delegation 278
+Staying Out of Trouble 279
+In the Wild 281
+Wrapping Up 283
+
+Chapter 23: Use method_missing to Build Flexible APIs 285
+Building Form Letters One Word at a Time 286
+Magic Methods from method_missing 287
+It’s the Users That Count—All of Them 289
+Staying Out of Trouble 289
+In the Wild 290
+Wrapping Up 292
+
+Chapter 24: Update Existing Classes with Monkey Patching 293
+Wide-Open Classes 294
+Fixing a Broken Class 295
+Improving Existing Classes 296
+Renaming Methods with alias_method 297
+Do Anything to Any Class, Anytime 299
+In the Wild 299
+Staying Out of Trouble 303
+Wrapping Up 303
+
+Chapter 25: Create Self-Modifying Classes 305
+Open Classes, Again 305
+Put Programming Logic in Your Classes 308
+Class Methods That Change Their Class 309
+In the Wild 310
+Staying Out of Trouble 314
+Wrapping Up 315
+
+Chapter 26: Create Classes That Modify Their Subclasses 317
+A Document of Paragraphs 317
+Subclassing Is (Sometimes) Hard to Do 319
+Class Methods That Build Instance Methods 321
+Better Method Creation with define_method 324
+The Modification Sky Is the Limit 324
+In the Wild 327
+Staying Out of Trouble 330
+Wrapping Up 332
+PART IV: Pulling It All Together 333
+
+Chapter 27: Invent Internal DSLs 335
+Little Languages for Big Problems 335
+Dealing with XML 336
+Stepping Over the DSL Line 341
+Pulling Out All the Stops 344
+In the Wild 345
+Staying Out of Trouble 347
+Wrapping Up 349
+
+Chapter 28: Build External DSLs for Flexible Syntax 351
+The Trouble with the Ripper 352
+Internal Is Not the Only DSL 353
+Regular Expressions for Heavier Parsing 356
+Treetop for Really Big Jobs 358
+Staying Out of Trouble 360
+In the Wild 362
+Wrapping Up 364
+
+Chapter 29: Package Your Programs as Gems 367
+Consuming Gems 367
+Gem Versions 368
+The Nuts and Bolts of Gems 369
+Building a Gem 370
+Uploading Your Gem to a Repository 374
+Automating Gem Creation 375
+In the Wild 376
+Staying Out of Trouble 377
+Wrapping Up 380
+
+Chapter 30: Know Your Ruby Implementation 381
+A Fistful of Rubies 381
+MRI: An Enlightening Experience for the C Programmer 382
+YARV: MRI with a Byte Code Turbocharger 385
+JRuby: Bending the “J” in the JVM 387
+Rubinius 388
+In the Wild 389
+Staying Out of Trouble 389
+Wrapping Up 390
+
+Chapter 31: Keep an Open Mind to Go with Those Open Classes 391
+
+Appendix: Going Further 393
