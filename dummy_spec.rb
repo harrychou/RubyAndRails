@@ -1,4 +1,6 @@
-class DummySpec ; end
+class DummySpec 
+  # dummy
+end
 
 describe DummySpec do
 

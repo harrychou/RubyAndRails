@@ -503,23 +503,133 @@ Chapter 7: Treat Everything Like an Object—Because Everything Is 73
   * -3.abs
   * "abc".upcase
   * :abc.length
-  * /abc/.class
+  * /abc/.class --> Regexp
+  * true.class --> TrueClass
+  * false.class --> FalseClass
+  * true.class.class --> Class (eventually class)
 
-The Importance of Being an Object 77
-Public, Private, and Protected 79
-In the Wild 81
-Staying Out of Trouble 82
-Wrapping Up 84
+- The Importance of Being an Object 77
+
+  * to override a method, just redefine in the subclass
+  * eval is defined in Object
+    - eval takes a string and execute it 
+    - very powerful
+  * other methods in Object
+    - instance_of?
+    - public_methods
+    - instance_variables
+
+- Public, Private, and Protected 79
+
+  * by default: all methods are public
+    - called everywhere in the program
+  * private
+    - by putting private in class
+    - or by putting private at the bottom of class
+    - cannot call a private method with an explicit object reference
+    - in Ruby, private methods are callable from subclasses
+  * protect 
+    Any instance of a class can call a protected method on any other instance of the class.
+  * in real Ruby code, visibility is not used quite often
+  * even visibility is limited, one can still use 'send' method in Object to invoke private/proted methods
+    n = doc.send( :word_count )
+
+- In the Wild 81
+
+  * a lot of ruby code are method calls, private/protected are method call
+  * require is a method call that takes the name of file and execute the content of the file
+  * other method calls
+    - attr_accessor
+    - attr_reader
+    - attr_writer
+
+- Staying Out of Trouble 82
+
+  * Object class defines 50+ methods
+    - these methods can be called everywhere without instance
+    - try not to define your methods with the same name, or there will bename collision, such as send/to_s
+  * be careful when overriding methods of Object class
+  * in Ruby everything is an object (Object class)
+    - you don't have to do null handling or special case handling based on types
+
+  a great way to avoid broken code is to have less of it  
+
+- Wrapping Up 84
 
 Chapter 8: Embrace Dynamic Typing 85
-Shorter Programs, But Not the Way You Think 85
-Extreme Decoupling 89
-Required Ceremony Versus Programmer-Driven Clarity 92
-Staying Out of Trouble 93
+
+  How can you possibly write reliable programs without some kind
+of static type checking? And why?
+
+- Shorter Programs, But Not the Way You Think 85
+
+  * allow for more compact code 
+    - don't have to specify type
+    - don't have to declare variables
+    - don't need interface/abstrac_class
+    - don't need the casts and d erived types
+  * you need to be aware of the possibility and write your code the dynamic typing way
+  * duck typing: only care about what an object can do
+
+- Extreme Decoupling 89
+
+  * example: you want to change the type of class's data member
+  * you don't have to do anything as long as you don't do anything special about the data members
+  * don't do type checking
+    - it defeat the purpose of dynamic typing
+    - it bloats code
+  * “The method is either there or it is not,”
+
+- Required Ceremony Versus Programmer-Driven Clarity 92
+
+  * declaring type sometimes become ceremonial
+  * use clarity instead of type declaration to explain
+
+- Staying Out of Trouble 93
+
+  * problems of dynamic typing
+    - missing method definition (relax, it is not that bad)
+  * try to write your code clear and concise
+  * write lots of tests
+
 In the Wild 94
-Wrapping Up 96
+
+  * “if the method is there, it is the right object”
+    
+    open_file = File.open( '/etc/passwd' )
+
+    or
+    
+    require 'stringio'
+    open_string = StringIO.new( "So say we all!\nSo say we all!\n" )
+
+    it is coincident that they share some same methods
+
+    - readchar
+    - readline
+    - seek(n)
+  * where subclassing is driven more from practical considerations than considering of type analysis
+  * “don’t artificially couple your classes together”
+    - in Set class when initialize with Array
+    - some code unnecessarily check type of array is Enumerable
+    - in face, all you care is if you can call 'each' on it
+
+- Wrapping Up 96
+
+  * First, don’t create more infrastructure than you really need. 
+  * Keep in mind that Ruby classes don’t need to be related by inheritance to share a common interface; they only need to support the same methods.
+  * Don’t obscure your code with pointless checks to see whether this really is an instance of that. 
+  * Do take advantage of the terseness provided by dynamic typing to write code that simply gets the job done with as little fuss as possible—but 
+  * Keep in mind that someone (possibly you!) will need to read and understand the code in the future.
+  * WRITE A LOT OF TESTS
 
 Chapter 9: Write Specs! 97
+
+  * A key part of the Ruby style of programming is that no class, and certainly no program, is ever done if it lacks automated tests.
+  * Two different test framework
+    Test::Unit
+    RSpec
+
 Test::Unit: When Your Documents Just Have to Work 98
 A Plethora of Assertions 101
 Don’t Test It, Spec It! 101
