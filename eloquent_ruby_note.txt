@@ -1,8 +1,12 @@
 Eloquent Ruby Note
 
+===========================================================
 PART I: The Basics 1
+===========================================================
 
+-----------------------------------------------------------
 Chapter 1: Write Code That Looks Like Ruby 3
+-----------------------------------------------------------
 
 - use two spaces, never tabs
 
@@ -70,8 +74,9 @@ end
     puts "Twice the number is #{n*2}"
   end
 
-
+-----------------------------------------------------------
 Chapter 2: Choose the Right Control Structure 17
+-----------------------------------------------------------
 
 - If, Unless, While, and Until 17
   
@@ -191,7 +196,9 @@ Chapter 2: Choose the Right Control Structure 17
     it is looking for nil, but accidentally triggered by false
   * Don’t try to use ||= to initialize things to booleans
 
+-----------------------------------------------------------
 Chapter 3: Take Advantage of Ruby’s Smart Collections 29
+-----------------------------------------------------------
 
   * hashes and arrays
   * set is a collection of unordered values with no duplicates
@@ -316,7 +323,9 @@ en mass
   
 - Wrapping Up 42
 
+-----------------------------------------------------------
 Chapter 4: Take Advantage of Ruby’s Smart Strings 43
+-----------------------------------------------------------
 
 - Coming Up with a String 44
 
@@ -368,7 +377,9 @@ Chapter 4: Take Advantage of Ruby’s Smart Strings 43
 
 - Wrapping Up 52
 
+-----------------------------------------------------------
 Chapter 5: Find the Right String with Regular Expressions 53
+-----------------------------------------------------------
 
   Ruby programmers do A LOT of regular expression
 
@@ -432,7 +443,9 @@ Chapter 5: Find the Right String with Regular Expressions 53
 
 - Wrapping Up 64
 
+-----------------------------------------------------------
 Chapter 6: Use Symbols to Stand for Something 65
+-----------------------------------------------------------
 
 - The Two Faces of Strings 65
 
@@ -483,7 +496,9 @@ Chapter 6: Use Symbols to Stand for Something 65
 
   * symbols and strings: two siblings with different talents
 
+-----------------------------------------------------------
 Chapter 7: Treat Everything Like an Object—Because Everything Is 73
+-----------------------------------------------------------
 
 - A Quick Review of Classes, Instances, and Methods 74
 
@@ -556,7 +571,9 @@ Chapter 7: Treat Everything Like an Object—Because Everything Is 73
 
 - Wrapping Up 84
 
+-----------------------------------------------------------
 Chapter 8: Embrace Dynamic Typing 85
+-----------------------------------------------------------
 
   How can you possibly write reliable programs without some kind
 of static type checking? And why?
@@ -623,82 +640,800 @@ In the Wild 94
   * Keep in mind that someone (possibly you!) will need to read and understand the code in the future.
   * WRITE A LOT OF TESTS
 
+-----------------------------------------------------------
 Chapter 9: Write Specs! 97
+-----------------------------------------------------------
 
   * A key part of the Ruby style of programming is that no class, and certainly no program, is ever done if it lacks automated tests.
   * Two different test framework
     Test::Unit
     RSpec
 
-Test::Unit: When Your Documents Just Have to Work 98
-A Plethora of Assertions 101
-Don’t Test It, Spec It! 101
-A Tidy Spec Is a Readable Spec 104
-Easy Stubs 105
-. . . And Easy Mocks 107
-In the Wild 108
-Staying Out of Trouble 110
-Wrapping Up 113
+- Test::Unit: When Your Documents Just Have to Work 98
 
+  * part of xUnit suite
+  * require 'test/unit'
+  * just run the file as regular ruby file
+  * assert_equal and assert
+  * use setup and teardown
+
+- A Plethora of Assertions 101
+
+  * assert_match /times.*/, 'times new roman'
+  * assert_instance_of String, 'hello'
+  * assert that the code raise error
+    assert_raise ZeroDivisionError do
+      x = 1/0
+    end
+  * assert that the code does NOT raise error
+    assert_nothing_thrown do
+      x = 1/2
+    end
+
+- Don’t Test It, Spec It! 101
+
+  * test vs. spec
+  * spec is about expectation and behavior, not data
+  * a spec is something like this: 
+    About the Document class: When you have a document instance, it should 
+    hang onto the text that you give it. It should also return an array 
+    containing each word in the document when you call the words method. 
+    And it should return the number of words in the document when you call the word_count method.
+  * expect
+    expect(...).to eq(...) # test equality
+    expect(...).to be(...) # test equality
+    expect(...) # test true
+
+- A Tidy Spec Is a Readable Spec 104
+
+  * rspec 
+    - it 'behavior' do : describe a behavior
+    - before :each do ... : setup 
+    - after :each
+    - before :all
+    - after :all
+
+- Easy Stubs 105
+
+  * how to isolate the class in test without testing supporting classes?
+    - stub (a class that has the same interface as the supporting class)
+      aka: stand-in class
+    - mock
+  * rspec make creating stub very easy, you just create a dynamic object with the method implementation (fake ones)
+    - stub (create a new object)
+      stub_printer = stub :available? => true, :render => nil
+    - stub! (modify an existing object/class)
+      apparently_long_string = 'actually short'
+      apparently_long_string.stub!( :length ).and_return( 1000000 )
+
+- . . . And Easy Mocks 107
+
+  * mock: we need to verify the behavior of the class-in-test
+  * A mock is a stub with an attitude (expectations).
+    - knowing what canned responses to return
+    - knows which methods should be called and with what arguments
+    - and how many times
+  * example:
+    mock_printer = mock('Printer')
+    mock_printer.should_receive(:available?).and_return(true)
+    mock_printer.should_receive(:render).exactly(3).times
+  * http://rspec.info/
+
+- In the Wild 108
+
+  * if using Test::Unit, there are other useful tools
+    - shoulda (expectation syntax)
+    - mocking (mock)
+  * check out RubySpec
+    - a spec for Ruby language itself
+
+- Staying Out of Trouble 110
+
+  * keep tests fast
+  * tests should communicate clearly where it got failure/errors
+  * tests should be silent if no errors
+  * tests should be independent of each other
+  * fail tests first before you implement
+  * some simple tests are better than no tests
+
+- Wrapping Up 113
+
+  * write tests/specs
+
+===========================================================
 PART II: Classes, Modules, and Blocks 115
+===========================================================
 
+-----------------------------------------------------------
 Chapter 10: Construct Your Classes from Short, Focused Methods 117
-Compressing Specifications 117
-Composing Methods for Humans 121
-Composing Ruby Methods 122
-One Way Out? 123
-Staying Out of Trouble 126
-In the Wild 127
-Wrapping Up 128
+-----------------------------------------------------------
 
+- Compressing Specifications 117
+
+  * how to create good methods?
+  * ruby prefers short and focused methods
+  * short methods works great with ruby
+  * short methods made code more testable
+
+- Composing Methods for Humans 121
+
+  * example: implementing a text compression class
+    - take a string and output two arrays
+    - one array is all the unique words
+    - second array is the representation of the string using the first array's indexes
+  * taking two refactorings:
+    - goal is to make short and focused methods
+
+      def unique_index_of( word )
+        @unique.index(word)
+      end
+      def add_unique_word( word )
+        @unique << word
+        unique.size - 1
+      end
+
+    - use ruby to make code clear
+
+      i = unique_index_of( word )
+      if i
+        @index << i
+      else
+        @index << add_unique_word( word )
+      end
+
+      to use || instead of if... else
+
+      i = unique_index_of( word ) || add_unique_word( word )
+      @index << i
+
+- Composing Methods for Human 121
+
+  * The composed method technique advocates dividing your class up into methods that have three characteristics.
+    - single responsibility for all code within
+    - single conceptual level for all code within
+    - clear name 
+  * smaller methods are easy-to-comprehend and will help you get the details right.
+
+- Composing Ruby Methods 122
+
+  * short method are good for ruby because it is really easy to create/maintain methods
+  * also short methods are easy to test
+
+- One Way Out? 123
+
+  * multiple return places make the code hard to comprehend
+  * shorter methods make the code clearn and don't have to worry about multiple returns
+
+- Staying Out of Trouble 126
+
+  * two things to remember about methods
+    - short
+    - coherent
+  * sometimes, try to create short methods only add clutter
+
+- In the Wild 127
+
+  * example: ActiveRecord::Base
+    - short with average 9 lines of code
+    - good and descriptive names
+
+- Wrapping Up 128
+
+-----------------------------------------------------------
 Chapter 11: Define Operators Respectfully 129
-Defining Operators in Ruby 129
-A Sampling of Operators 131
-Operating Across Classes 134
-Staying Out of Trouble 135
-In the Wild 137
-Wrapping Up 139
+-----------------------------------------------------------
 
+- Defining Operators in Ruby 129
+
+  * it is powerful to be able to redefine standard operations
+  * Ruby supports
+    * plus and risks
+
+  * Ruby's philosophy is to empower programmers, don't keep secret
+  * you can define your own Float and have all the standard numeric operators with it
+  * Ruby translates operators to corresponding method calls
+    result = first + second * (third - fourth)
+    ==>
+    result = first.+(second.*(third.-(fourth)))
+
+    class Document
+      # Most of the class omitted...
+      def +(other)
+        Document.new( title, author, "#{content} #{other.content}" )
+      end
+    end
+
+- A Sampling of Operators 131
+
+  * popular operators overloads
+    + - / *
+    %(mode) & | ^ (exclusive or)
+    << (Ruby use this to mean - add another)
+    +@ (+ as unary) -@ (- as unary)
+  * array operator
+    [](index) ==> for retrieving an element obj[3]
+    []=(index, obj) ==> for assign an element at location
+    - if array operators are defined, better define 'size' so users know the index range
+
+- Operating Across Classes 134
+
+  * if define an operator across classes of objects, it is better to define the same operator for all classes
+
+- Staying Out of Trouble 135
+
+  * when to use operator overloading
+    - if your class is a natural candidate for numeric operations
+    - if your class is a collection
+      - define <<
+      - if index is supported [] and []=
+  * operators should not modify operands
+
+- In the Wild 137
+
+  * Time can do operations, but not commutative
+    Time.now
+    one_minute_from_now = now + 60 
+  * string class overload %
+    "The value of n is %d" % 42
+  * RSpec should
+    x.should == 42
+
+- Wrapping Up 139
+
+  * equality (== and ===) is totally separate subject
+
+-----------------------------------------------------------
 Chapter 12: Create Classes That Understand Equality 141
-An Identifier for Your Documents 141
-An Embarrassment of Equality 142
-Double Equals for Everyday Use 143
-Broadening the Appeal of the == Method 145
-Well-Behaved Equality 146
-Triple Equals for Case Statements 149
-Hash Tables and the eql? Method 150
-Building a Well-Behaved Hash Key 152
-Staying Out of Trouble 153
-In the Wild 154
-Wrapping Up 156
+-----------------------------------------------------------
+
+  object equality is a tough question
+  important for creating well-behaved objects
+
+- An Identifier for Your Documents 141
+
+  * create a DocumentIdentifier class to identify Document objects with @name and @folder
+  * question: how to compare two DocumentIdentifier objects
+
+- An Embarrassment of Equality 142
+
+  * in Ruby there are four methods for equality
+    - eql?
+    - equal?
+      * for object identify
+      * no need to override, ever
+    - ==
+    - ===
+
+- Double Equals for Everyday Use 143
+
+  * == default behavior is equal?
+  * can be overriden
+
+  def ==(other)
+    return true if other.equal?(self)
+    return false unless other.instance_of?(self.class)
+    folder == other.folder && name == other.name
+  end 
+
+  * nice, no need to check nil
+
+- Broadening the Appeal of the == Method 145
+
+  * if want to also allow subtypes
+    change instance_of? to kind_of?
+  * if want to totally don't care about type heirarchy
+    use respond_to?
+
+    def ==(other)
+      return false unless other.respond_to?(:folder)
+      return false unless other.respond_to?(:name)
+      folder == other.folder && name == other.name
+    end
+
+- Well-Behaved Equality 146
+
+  * be aware of the principla of symmetry
+    - if a == b, this should be true too: b == a
+  * transive principle
+    - if a == b, and b == c
+      a == c should be true
+  * rethink about overriding ==
+    - do we really need to allow == to do that many things?
+    - why not make it less smart
+
+- Triple Equals for Case Statements 149
+
+  * === is used when compare in case statement
+  * this is to allow this code: 
+
+    location = 'area 51'
+    case location
+    when /area.*/
+      # ...
+    when /roswell.*/
+      # ...
+    else
+      # ...
+    end
+
+  * the Regexp class implements === that does pattern matching
+  * most of the time === is just the same as ==
+    ==> better to leave this alone
+
+- Hash Tables and the eql? Method 150
+
+  * implicity called in Hash table situation
+  * only needed when your object will be used as Hash key
+  * but still not easy, need to have the same hash key
+
+- Building a Well-Behaved Hash Key 152
+
+  * The Hash class calls the hash method (another one of those methods that you inherit from Object) to get the hash code from its keys. The Hash class uses the eql? method to decide if two keys are in fact the same key.
+  * override both hash value and eq?
+
+    def hash
+      folder.hash ^ name.hash
+    end
+
+    def eql?(other)
+      return false unless other.instance_of?(self.class)
+      folder == other.folder && name == other.name
+    end
+
+- Staying Out of Trouble 153
+
+  * don't try to be fancy
+    Many objects will never find themselves in the middle of an equality expression or be called upon to be a hash key.
+  * if your class is just a wrapper, borrow code
+
+    class DisArray
+      attr_reader :my_array
+      
+      def initialize
+        @my_array = []
+      end
+      def ==(other)
+        return false unless other.kind_of?(DisArray)
+        @my_array == other.my_array
+      end
+      def eql?(other)
+        return false unless other.kind_of?(DisArray)
+        @my_array.eql?( other.my_array )
+      end
+      def hash
+        @my_array.hash
+      end
+
+      # Rest of the class omitted...
+    end
+
+  * do the simplest thing that might work
+    don't try to do cross class equality if you can avoid it
+
+- In the Wild 154
+
+  * in Ruby, integer (FixNum) and Float class can use ==
+  * if you define <=>, with Comparable module included
+    ==> ruby will implement ==, < <=, ... etc for you
+
+    class RomanNumerals
+      include Comparable
+  
+      # Actual guts of the class omitted...
+  
+      def <=>(other)
+        # Return -1, 0, or 1...
+      end
+    end
+
+  * <=> should return -1 if a is less than b, 0 if they are equal, and 1 if a is greater than
+  * ruby classes (subclass of Class), implement === with kind_of? to allow: 
+
+    the_object = 3.14159
+    case the_object
+    when String
+      puts "it's a string"
+    when Float
+      puts "It's a float"
+    when Fixnum
+      puts "It's a fixnum"
+    else
+      puts "Dunno!"
+    end
+  * because of the above, you can even write
+    Float === 1.0
+
+- Wrapping Up 156
+
+  * getting object equality right can be trying, it is certainly doabl
+  * understand the equality model well
 
 Chapter 13: Get the Behavior You Need with Singleton and
 Class Methods 157
-A Stubby Puzzle 158
-A Hidden, but Real Class 160
+
+  * class hierarchy/model is the essential part of OO
+  * what do you do when the class/instance approximation breaks down?
+    - what to do when the instance does not want to follow the spec of class?
+    - singleton method is Ruby's solution
+    - class method is just another name of singleton method
+
+- A Stubby Puzzle 158
+
+  * recall Rspec use stub method to create stub objects
+
+  stub_printer = stub :available? => true, :render => nil
+  stub_font = stub :size => 14, :name => 'Courier'
+
+  * all stub objects are of class Mock
+  * all the stubbed methods (:available?, :render, ... etc) are singleton methods
+  * singleton methods
+    - methods that are designed for only one object instance
+    - how to define?
+      (def instance.method_name)
+
+      hand_built_stub_printer = Object.new
+      def hand_built_stub_printer.available?
+        true
+      end
+      def hand_built_stub_printer.render( content )
+        nil
+      end
+  * Singleton methods override any regular, class-defined methods. 
+  * alternative way to create singleton methods:
+
+    class << hand_built_stub_printer
+      def available? # A singleton method
+        true
+      end
+      def render # Another one
+        nil
+      end
+    end
+
+- A Hidden, but Real Class 160
+
+  * how is 'singleton methods' implemented?
+  * every Ruby object carries around an additional, somewhat shadowy class of its own
+  * called 'singleton class' 
+    (or metaclass or eigenclass)
+  * how to get hold of 'singleton class'
+
+    singleton_class = class << hand_built_stub_printer
+      self
+    end
+
+    - 'class << hand_built_stub_printer' changed the context, so 'self' is the singleton class
+    - by returning it, the singleton_class vairiable will pont to it
+
 Class Methods: Singletons in Plain Sight 162
+
+  * class methods: methods that are defined in the class
+  * ways to define class methods
+
+    def Document.explain
+      puts "self is #{self}"
+      puts "and its class is #{self.class}"
+    end
+
+    class Document
+      def self.create_test_document( length )
+        Document.new( 'test', 'test', 'test ' * length )
+      end
+      # ...
+    end
+
+    class Document
+      class << self
+        def find_by_name( name )
+          Class Methods: Singletons in Plain Sight 163
+          # Find a document by name...
+        end
+      end
+      # ...
+    end
+
+  * in essence, class methods are singleton methods
+  * just whether the class is the instance's 'singleton class' or the regular 'class' (which is an instance of the class Class)
+
 In the Wild 164
+
+  * in ActiveRecord, table_name is a class method
+    
+    class Author < ActiveRecord::Base
+    end
+
+    my_table_name = Author.table_name
+
+  * use class methods for Factory methods to create new instances of the class
+
+    require 'date'
+    xmas = Date.civil( 2010, 12, 25 )
+    xmas = Date.commercial( 2010, 51, 6 )
+
+  * obj.singleton_methods will give you a list of singleton methods
+
 Staying Out of Trouble 165
+
+  * be aware of different scope
+  * class methods are not visible to instances
+  * or, use obj.class.class_method to call it
+  * class methods can also be inherited
+    (a topic in metaprogramming)
+
+    class Parent
+      def self.who_am_i
+        puts "self is #{self}"
+      end
+    end
+
+    class Child < Parent
+    end  
+
+    Parent.who_am_i ==> self is Parent
+    Child.who_am_i ==> self is Child
+
 Wrapping Up 167
 
+  * signleton method, class method
+  * singleton class
+
 Chapter 14: Use Class Instance Variables 169
-A Quick Review of Class Variables 169
-Wandering Variables 171
-Getting Control of the Data in Your Class 174
-Class Instance Variables and Subclasses 175
-Adding Some Convenience to Your Class Instance Variables 176
-In the Wild 177
-Staying Out of Trouble 179
-Wrapping Up 179
+
+  * programs deal with data
+  * where to store class-level data
+    - class variable @@
+      (have some undesireable behaviors)
+    - class instance variable
+      (more practical for use)
+
+- A Quick Review of Class Variables 169
+
+  * using class variable @@
+    - not visible outside the class
+    - visiable to instances of the class
+    - example
+
+      class Document
+        @@default_paper_size = :a4
+
+        def self.default_paper_size
+          @@default_paper_size
+        end
+
+        def self.default_paper_size=(new_size)
+          @@default_paper_size = new_size
+        end
+
+          attr_accessor :title, :author, :content
+          attr_accessor :paper_size
+        
+        def initialize(title, author, content)
+          @title = title
+          @author = author
+          @content = content
+          @paper_size = @@default_paper_size
+        end
+
+        # Rest of the class omitted...
+      end 
+
+- Wandering Variables 171
+
+  * problem with class variable
+    => when resolving the varaible, Ruby travels class hierarchy to know which class
+  * for assigning @@default_paper_size = :a4
+    - first look at current class
+    - if not, look up the hierarchy
+    - if run out, create the @@default_paper_size in current class
+  * for getter
+    - first look at current class
+    - if not, look up the hierarchy
+    - if run out, throw NameError exception
+  * Document, Resume, Presentation class hierarchy
+    - end result -> based on the order of require, the class variable will be set/overwrite
+  * this is very similar to the 'global variable' problem. 
+    Just in this case, the variable is global within the inheritance tree
+     
+- Getting Control of the Data in Your Class 174
+
+  * instead of using @@, why not use @ at the class instance
+
+    class Document
+      @default_font = :times
+      
+      def self.default_font=(font)
+        @default_font = font
+      end
+  
+      def self.default_font
+        @default_font
+      end
+  
+      def initialize(title, author)
+        @title = title
+        @author = author
+        @font = Document.default_font
+      end      
+    end
+
+- Class Instance Variables and Subclasses 175
+
+  * class instance variables do just fine with subclasses
+  * child classes can have the same class instance variable
+
+    class Presentation < Document
+      @default_font = :nimbus
+      class << self
+        attr_accessor :default_font
+      end
+      def initialize(title, author)
+        @title = title
+        @author = author
+        @font = Presentation.default_font
+      end
+      # most of the class omitted...
+    end  
+
+- Adding Some Convenience to Your Class Instance Variables 176
+
+  * to avoid defining getters and setters, use the 'class << self'
+
+    class Document
+      # @variables defined here is associated with the class, not instance
+      @default_font = :times
+    
+      class << self
+        attr_accessor :default_font
+      end
+    
+      # Rest of the class omitted...
+    end
+
+- In the Wild 177
+
+  * Rails use class instance variables to regiter callbacks
+    - example: ActiveRecord
+    - the call after_save actually keeps the callback function in a class instance variable (defined in ActiveRecord::Base) call @after_save_callbacks
+
+    class Person < ActiveRecord::Base
+      after_save :handle_after_save
+      def handle_after_save
+      # Do something after the record is saved...
+      end
+    end
+
+  * class variables @@ are still useful 
+    - example: URI parsing
+    - URI class hold a @@schemes variable
+    - every kind of schema will need to add itself to the variable
+
+      class HTTP
+        # Lots of code omitted...
+      end
+      @@schemes['HTTP'] = HTTP
+
+    - @@schema is not only a class variable, it is a 'module variable'
+
+      module URI
+        # ...
+        @@schemes = {}
+      end
+      module URI
+        class HTTP
+          # Lots of code omitted...
+        end
+        @@schemes['HTTP'] = HTTP
+      end
+
+- Staying Out of Trouble 179
+
+  * if class variables are to be used, follow what @@schems does
+  * declare the @@schemes early in the module before any other code can access it
+
+- Wrapping Up 179
+
+  * class variables can be confusing
+  * class instance variables are there to fill in the role
 
 Chapter 15: Use Modules as Name Spaces 181
-A Place for Your Stuff, with a Name 181
-A Home for Those Utility Methods 184
-Building Modules a Little at a Time 185
-Treat Modules Like the Objects That They Are 186
-Staying Out of Trouble 189
-In the Wild 190
-Wrapping Up 191
+
+  * for larger projects, we need a way to organize things
+  * modules is a way to organize the classes and constants (and modules) into a friendly hierarchy
+
+- A Place for Your Stuff, with a Name 181
+
+  * multi-hats of classes
+    - factory
+    - container
+    - methods and constants
+  * module is the container part of class without factory
+    - cannot be instantiate
+    - can hold
+      - methods
+      - constants
+      - classes
+      - other modules
+
+      module Rendering
+        class Font
+          attr_accessor :name, :weight, :size
+          def initialize( name, weight=:normal, size=10 )
+            @name = name
+            @weight = weight
+            @size = size
+          end
+          # Rest of the class omitted...
+        end
+        class PaperSize
+          attr_accessor :name, :width, :height
+          def initialize( name='US Let', width=8.5, height=11.0 )
+            @name = name
+            @width = width
+            @height = height
+          end
+          # Rest of the class omitted...
+        end
+
+        DEFAULT_FONT = Font.new( 'default' )
+        DEFAULT_PAPER_SIZE = PaperSize.new
+      end
+
+  * to access the class inside module 
+    - Rendering::Font
+    - Rendering::DEFAULT_FONT
+  * to avoid typing module names use:
+    include Rendering
+
+- A Home for Those Utility Methods 184
+
+  * use Module to hold utility methods
+    - defined as self. (module-level methods)
+    - calling: WordProcessor.inches_to_points( 1.0 )
+    - or (less used) WordProcessor::inches_to_points( 1.0 )
+
+    module WordProcessor
+      def self.points_to_inches( points )
+        points / 72.0
+      end
+      def self.inches_to_points( inches )
+        inches * 72.0
+      end
+      # Rest of the module omitted
+    end
+
+- Building Modules a Little at a Time 185
+
+  * Ruby's code is always open to extension (modifications)
+  * Modules can be defined in two separate files and pull them in together by two requires
+
+- Treat Modules Like the Objects That They Are 186
+
+  * everything is object, including module
+
+    the_module = Rendering
+    times_new_roman_font = the_module::Font.new('times-new-roman' )
+
+  * we can use this to swap modules, as long as the two modules support the same functionalities(methods/constants .... (interface))
+
+- Staying Out of Trouble 189
+
+  * when to use namespace modules?
+    - when you create a lot of related classes
+  * when defining utility methods in modules, make sure use 'self.'
+    - if not, the method cannot be used (unless being mixed in to another class)
+  * don't nest modules too deep
+
+- In the Wild 190
+
+  * examples:
+    - DataMapper
+    - YAML
+
+- Wrapping Up 191
+  
+  * use module to divide up the code
+  * module can be used as object too
+  * another use of module: as mix-ins
 
 Chapter 16: Use Modules as Mixins 193
 Better Books with Modules 193
