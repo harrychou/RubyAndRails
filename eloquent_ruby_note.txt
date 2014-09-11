@@ -1522,18 +1522,175 @@ Chapter 16: Use Modules as Mixins 193
   * use mix-in
   * mix-in will create phantom super class
   * be aware of the interface between module and the including classes
+
 Chapter 17: Use Blocks to Iterate 207
-A Quick Review of Code Blocks 207
-One Word after Another 209
-As Many Iterators as You Like 210
-Iterating over the Ethereal 211
-Enumerable: Your Iterator on Steroids 213
-Staying Out of Trouble 215
-In the Wild 217
-Wrapping Up 218
+
+- A Quick Review of Code Blocks 207
+
+  * calling method with code block as argument
+
+    do_something do
+      puts "Hello from inside the block"
+    end
+
+    do_something { puts "Hello from inside the block" }
+
+  * handling the code block argument
+
+    def do_something
+      yield if block_given?
+    end  
+
+  * with arguments
+
+    def do_something_with_arg (a, b)
+      yield a, b if block_given?
+    end
+
+    # calling
+
+    do_something_with_arg do |a, b|
+      pp a
+      pp b
+      puts "Hello from inside the block "
+    end
+
+  * code block does return a value
+
+- One Word after Another 209
+
+  * if really wanted, you can define your own eachXX method
+
+    class Document
+      # Stuff omitted...
+      def each_word
+        word_array = words
+        index = 0
+        while index < words.size
+          yield( word_array[index] )
+          index += 1
+          end
+      end
+    end
+
+  * but since words is already a collection, why not just use it?
+
+    def each_word
+      words.each { |word| yield( word ) }
+    end
+
+- As Many Iterators as You Like 210
+
+  * can have multiple iterators
+  * you can iterate through as much as possible
+  * can give any names
+
+- Iterating over the Ethereal 211
+
+  * you can write iterators that run through collections that don’t actually exist, at least not all at the same time.
+
+    12.times { |x| puts "The number is #{x}" }
+
+  * just need to return something one at a time
+
+    def each_word_pair (words)
+      word_array = words
+      index = 0
+      while index < (word_array.size-1)
+        yield word_array[index], word_array[index+1]
+        index += 1
+      end
+    end
+
+    words = ['harry', 'chou', 'rocks', 'yeah']
+    each_word_pair words do |first, second|
+      puts "#{first}, #{second}"
+    end    
+
+- Enumerable: Your Iterator on Steroids 213
+
+  * you can use Enumerable module to enhance your collection class
+    - just need to define the each method
+  * Enumerable module gives you some methods to use
+    - include?
+    - to_a (return an array)
+    - find
+    - find_all
+    - each_cons(n)
+      repeatedly call the block, each time passing in an array of consecutive elements from the collection
+    - each_splice
+    - count
+    - if <=> defined, can use sort
+  * Enumertor
+    you can also use Enumerator class to create a enumerable based on any arbitrary eachXX method
+
+    enum = Enumerator.new( doc, :each_character )
+
+- Staying Out of Trouble 215
+  
+  * block is external to the classes that use it
+    - be careful how the block works
+    - block can raise exception too
+      * use exception handling
+
+        def each_name
+          # Get some expensive resource
+          name_server = open_name_server 
+          
+          begin
+            while name_server.has_more?
+            yield name_server.read_name
+            end
+          ensure
+            # Close the expensive resource
+            name_server.close 
+          end
+        end
+
+    - block can also run slow or never stop
+      * use break or return
+      * break: 
+        break will trigger a return out of the method that called the block.
+      * return:
+        the method that defined (not called) the block to return
+      * both break and return will trigger 'ensure'
+
+- In the Wild 217
+
+  * Dir class use block to iterate over directory
+
+    etc_dir = Dir.new("/etc")
+    etc_dir.each {|entry| puts entry}
+
+  * Resolv (find all the IP addrs using DNS)
+
+    require 'resolv'
+    Resolv.each_address( "www.google.com" ) {|x| puts x}
+
+  * ObjectSpace.each_object
+
+    ObjectSpace.each_object(String) { |the_string| puts the_string }
+
+  * find all Primes
+
+    require 'mathn'
+    # Warning: According to Euclid, this never stops...
+    Prime.each {|x| puts "The next prime is #{x}" }
+
+- Wrapping Up 218
+
+  * As long as you can come up with one element after another, you can build an iterator.
 
 Chapter 18: Execute Around with a Block 219
-Add a Little Logging 219
+
+  * use code block to deliver code to other places
+  * how to provide data arguments and get return value
+  * why method names are important
+
+- Add a Little Logging 219
+
+
+
 When It Absolutely Must Happen 224
 Setting Up Objects with an Initialization Block 225
 Dragging Your Scope along with the Block 225
@@ -1555,7 +1712,9 @@ Wrapping Up 244
 PART III: Metaprogramming 247
 
 Chapter 20: Use Hooks to Keep Your Program Informed 249
-Waking Up to a New Subclass 250
+
+- Waking Up to a New Subclass 250
+
 Modules Want To Be Heard Too 253
 Knowing When Your Time Is Up 255
 . . . And a Cast of Thousands 256
