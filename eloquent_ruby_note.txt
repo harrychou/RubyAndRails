@@ -1346,6 +1346,7 @@ Chapter 15: Use Modules as Name Spaces 181
     - factory
     - container
     - methods and constants
+    - play in class hierarchy (be super)
   * module is the container part of class without factory
     - cannot be instantiate
     - can hold
@@ -1436,13 +1437,91 @@ Chapter 15: Use Modules as Name Spaces 181
   * another use of module: as mix-ins
 
 Chapter 16: Use Modules as Mixins 193
-Better Books with Modules 193
-Mixin Modules to the Rescue 195
-Extending a Module 197
-Staying Out of Trouble 198
-In the Wild 202
-Wrapping Up 205
 
+  class can be 'super' (play in hierarchy of classes)
+  modules can be used to 'inject' (mix-in) into class hierarchy
+  mix-in allow you to 'share' common code in unrelated classes
+
+- Better Books with Modules 193
+  
+  * example: we have two separate class heirarchy
+  * you have a piece of code that you want to share among them
+  * you can create a super-class and have the two classes both inherit it
+  * or, cleaner, use 'mix-in'
+
+- Mixin Modules to the Rescue 195
+
+  * by including a module in a class you have mixed it in to the class. 
+  * the module itself, WritingQuality in this case, is a mixin mod- ule. 
+  * it is possible, and common, to include multiple modules in a class
+
+- Extending a Module 197
+
+  * instead of mix-in methods to become instance methods
+  * use extend to mix-in the methods as singleton class methods
+
+    class Document
+      extend Finders
+      # Most of the class omitted...
+    end
+
+- Staying Out of Trouble 198
+
+  * implementation
+    When you mix a module into a class, Ruby rewires the class hierarchy a bit, inserting the module as a sort of pseudo superclass of the class.
+  * No matter how many modules a class includes, instances of the class will still claim to be, well, instances of the class.
+  * but, you can use kind_of? to find out if an object is from a class that includes certain module
+  * or, use ClassName.ancestors to get a list of superclasses and moduels
+  * the class can override the methods in the included module
+  (since when you include a module, Ruby create an immediate super class on top of the class)
+  * if you include multiple modules, each include will bump the other modules up one level
+  * when writing modules, think through the interface itneraction between the module and the class - use comment to warn the including class author
+
+- In the Wild 202
+
+  * module can contains all kind of things
+    - methods
+    - constants
+    - ... etc
+  * DataMapper is a good example of using module instead of super class
+  * helpers
+    - in Rails' view helper
+
+    module ActionView
+      # Huge amounts of code and helpful documentation omitted...
+      module Helpers
+        module FormHelper
+          def label(object_name, method, text = nil, options = {})
+             # ...
+          end
+          def radio_button(object_name, method, tag_value,options={})
+            # ...
+          end 
+        end
+      end
+    end
+
+  * constants
+    - sqlite3
+      
+      module ErrorCode
+        OK         =  0   # Successful result
+        ERROR      =  1   # SQL error or missing database
+        INTERNAL   =  2   # An internal logic error in SQLite
+        PERM       =  3   # Access permission denied
+        ABORT      =  4   # Callback routine requested an abort
+        BUSY       =  5   # The database file is locked
+        LOCKED     =  6   # A table in the database is locked
+        # Seemingly endless list of remaining error codes omitted...
+      end
+
+    - by including this module, you can access OK/ERROR/ ... directly  
+
+- Wrapping Up 205
+
+  * use mix-in
+  * mix-in will create phantom super class
+  * be aware of the interface between module and the including classes
 Chapter 17: Use Blocks to Iterate 207
 A Quick Review of Code Blocks 207
 One Word after Another 209
