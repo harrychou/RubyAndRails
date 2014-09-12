@@ -1689,13 +1689,66 @@ Chapter 18: Execute Around with a Block 219
 
 - Add a Little Logging 219
 
+  * example: adding logging to your code
+    - you don't want the logging to be everywhere
+    - you don't want to disturb the general flow
+    - you can use code block: 
 
+      def do_something
+        with_logging('load') { @doc = Document.load( 'resume.txt' ) }
+        # Do something with the document...
+        with_logging('save') { @doc.save } 
+      end
 
-When It Absolutely Must Happen 224
-Setting Up Objects with an Initialization Block 225
-Dragging Your Scope along with the Block 225
-Carrying the Answers Back 227
-Staying Out of Trouble 228
+      def with_logging(description)
+        begin
+          @logger.debug( "Starting #{description}" )
+          yield
+          @logger.debug( "Completed #{description}" )
+        rescue
+          @logger.error( "#{description} failed!!")
+          raise
+        end 
+      end
+
+    - this abstract out the begin/rescue/end block and also add logging logic to a central place
+    - this also clearly communicate the code
+
+- When It Absolutely Must Happen 224
+
+  * this technique is called 'execution around'
+    “bury the details in a method that takes a block” 
+  * execute around means you take a block of code and you want to execute something before and/or after executing the code, or even handle exceptions 
+
+- Setting Up Objects with an Initialization Block 225
+
+  * sometimes when designing a class, you want your user to be able to add initialization logic
+
+  def initialize(title, author, content = '')
+    @title = title
+    @author = author
+    @content = content
+    yield( self ) if block_given?
+  end
+
+- Dragging Your Scope along with the Block 225
+
+  * a common mistake, you unnecessarily pass more data than needed
+    - the code block has a closure
+    - the variables are dragged along with the code block
+  * the time you want to pass in argument to the method is for the containing method to use, not the code block
+
+- Carrying the Answers Back 227
+
+  * sometimes you want to capture the returned value of code block
+  * and do something with it
+
+- Staying Out of Trouble 228
+
+  - for 'execute around' code block, the exception handling is important, because you want to ensure something code will happen before/after execution
+  - keep the name reasonable for the caller to communicate the code's intent
+  
+
 In the Wild 229
 Wrapping Up 231
 
