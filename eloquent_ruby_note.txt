@@ -1048,8 +1048,10 @@ Chapter 12: Create Classes That Understand Equality 141
   * getting object equality right can be trying, it is certainly doabl
   * understand the equality model well
 
+-----------------------------------------------------------
 Chapter 13: Get the Behavior You Need with Singleton and
 Class Methods 157
+-----------------------------------------------------------
 
   * class hierarchy/model is the essential part of OO
   * what do you do when the class/instance approximation breaks down?
@@ -1177,7 +1179,9 @@ Wrapping Up 167
   * signleton method, class method
   * singleton class
 
+-----------------------------------------------------------
 Chapter 14: Use Class Instance Variables 169
+-----------------------------------------------------------
 
   * programs deal with data
   * where to store class-level data
@@ -1335,7 +1339,9 @@ Chapter 14: Use Class Instance Variables 169
   * class variables can be confusing
   * class instance variables are there to fill in the role
 
+-----------------------------------------------------------
 Chapter 15: Use Modules as Name Spaces 181
+-----------------------------------------------------------
 
   * for larger projects, we need a way to organize things
   * modules is a way to organize the classes and constants (and modules) into a friendly hierarchy
@@ -1436,7 +1442,9 @@ Chapter 15: Use Modules as Name Spaces 181
   * module can be used as object too
   * another use of module: as mix-ins
 
+-----------------------------------------------------------
 Chapter 16: Use Modules as Mixins 193
+-----------------------------------------------------------
 
   class can be 'super' (play in hierarchy of classes)
   modules can be used to 'inject' (mix-in) into class hierarchy
@@ -1523,7 +1531,9 @@ Chapter 16: Use Modules as Mixins 193
   * mix-in will create phantom super class
   * be aware of the interface between module and the including classes
 
+-----------------------------------------------------------
 Chapter 17: Use Blocks to Iterate 207
+-----------------------------------------------------------
 
 - A Quick Review of Code Blocks 207
 
@@ -1681,7 +1691,9 @@ Chapter 17: Use Blocks to Iterate 207
 
   * As long as you can come up with one element after another, you can build an iterator.
 
+-----------------------------------------------------------
 Chapter 18: Execute Around with a Block 219
+-----------------------------------------------------------
 
   * use code block to deliver code to other places
   * how to provide data arguments and get return value
@@ -1748,25 +1760,240 @@ Chapter 18: Execute Around with a Block 219
   - for 'execute around' code block, the exception handling is important, because you want to ensure something code will happen before/after execution
   - keep the name reasonable for the caller to communicate the code's intent
   
+- In the Wild 229
 
-In the Wild 229
-Wrapping Up 231
+  * 'execute around' is commonly used for db or file object's open/connect methods
 
+  File.open('/etc/passwd') do |f|
+    # File open here!
+    # Begin cracking the passwords on Russ' computer...
+  end  
+
+  * 'execute around' is also useful in initializing objects
+    - exmaple: Gem::Specification
+
+      SPEC = Gem::Specification.new do |s|
+        #### Basic information.
+        s.name = 'rake'
+        s.version = $package_version
+        s.summary = "Ruby based make-like utility."
+        s.description = <<-EOF
+          Rake is a Make-like program implemented in Ruby. Tasks
+          and dependencies are specified in standard Ruby syntax.
+        EOF
+        # Lots and lots omitted!
+      end
+  * ActiveRecord's say_with_time method
+
+    class Migration
+      # Most of the class omitted...
+      def say(message, subitem=false)
+        write "#{subitem ? " ->" : "--"} #{message}"
+      end
+      def say_with_time(message)
+        say(message)
+        result = nil
+        time = Benchmark.measure { result = yield }
+        say "%.4fs" % time.real, :subitem
+        say("#{result} rows", :subitem) if result.is_a?(Integer)
+        result
+      end
+    end
+
+  * ActiveRecord has a silence method too
+
+- Wrapping Up
+
+  * 'execute around' technique
+  * useful when you have code that frequently needs to come before or after some other code, or both. 
+  * build a method that takes a block; inside of that method you execute whatever code needs executing before and after you call the block. 
+
+-----------------------------------------------------------
 Chapter 19: Save Blocks to Execute Later 233
-Explicit Blocks 233
-The Call Back Problem 234
-Banking Blocks 236
-Saving Code Blocks for Lazy Initialization 237
-Instant Block Objects 239
-Staying Out of Trouble 240
-In the Wild 243
-Wrapping Up 244
+-----------------------------------------------------------
 
+  * using blocks as a device for delivering your code where it is needed and execute when it is needed
+
+- Explicit Blocks 233
+
+  * our previous code use implicit block mechanism
+  * sometimes, it is better the block is explicit
+    - arg: &that_block
+    - calling: that_block.call
+    - if not passed in: that_block will be Nil
+    - to check: that_block.call if that_block
+  * explicit code block is preferred
+  * explicit code block allow you to hold on to the code block to be executed later
+
+- The Call Back Problem 234
+
+  * Listener pattern
+    - create specific listeners that can handle some events
+    - the main class has the listeners registered (set)
+    - when the event is triggered, the listeners get called
+    - advantages:
+      * separate listener allow simple purpose code
+      * allow swap out the listener
+    - disadvantages:
+      * many classes to handle/maintain
+
+- Banking Blocks 236
+
+  * using code block: 
+
+    class Document
+      # Most of the class omitted...
+      def on_save( &block )
+        @save_listener = block
+      end
+      def on_load( &block )
+        @load_listener = block
+      end
+      def load( path )
+        #@content = File.read( path )
+        @load_listener.call( self, path ) if @load_listener
+      end
+      def save( path )
+        #File.open( path, 'w' ) { |f| f.print( @contents ) }
+        @save_listener.call( self, path ) if @save_listener
+      end
+    end
+
+  * calling code blocks
+
+    doc = Document.new
+    doc.on_load do |doc, path| 
+      puts "loaded ...." << path
+    end
+    doc.on_save do |doc|
+      puts "saved ...."
+    end
+
+    doc.save('test.txt')
+    doc.load('test.txt')
+    doc.save('test.txt')
+
+  * the code is now shorter/concise and clean
+
+- Saving Code Blocks for Lazy Initialization 237
+
+  * lazy loading: avoid loading certain part of an object until it is accessed
+
+    class ArchivalDocument
+      attr_reader :title, :author
+
+      def initialize(title, author, path)
+        @title = title
+        @author = author
+        @path = path
+      end
+
+      def content
+        @content ||= File.read( @path )
+      end
+    end
+
+  * lazy_loading using block
+
+    class BlockBasedArchivalDocument
+      attr_reader :title, :author
+      def initialize(title, author, &block)
+        @title = title
+        @author = author
+        @initializer_block = block
+      end
+      def content
+        if @initializer_block
+          @content = @initializer_block.call
+          @initializer_block = nil
+        end
+        @content
+      end
+    end
+
+    file_doc = BlockBasedArchivalDocument.new( 'file', 'russ' ) do
+      File.read( 'some_text.txt' )
+    end  
+
+    google_doc = BlockBasedArchivalDocument.new('http', 'russ') do
+      Net::HTTP.get_response('www.google.com', '/index.html').body
+    end      
+
+- Instant Block Objects 239
+
+  * to produce a code block object
+    - an instance of "Proc" class
+    - without using a method to hold it
+    - use lambda (a method) to generate it
+
+  * example: extend the lazy document with default initializer block 
+
+    class Document
+      DEFAULT_LOAD_LISTENER = lambda do |doc, path|
+        puts "Loaded: #{path}"
+      end
+      DEFAULT_SAVE_LISTENER = lambda do |doc, path|
+        puts "Saved: #{path}"
+      end
+      
+      attr_accessor :title, :author, :content
+      def initialize( title, author, content='' )
+        @title = title
+        @author = author
+        @content = content
+        @save_listener = DEFAULT_SAVE_LISTENER
+        @load_listener = DEFAULT_LOAD_LISTENER
+      end
+      # Rest of the class omitted...
+    end  
+
+- Staying Out of Trouble 240
+
+  * use 'Proc.new' vs. use lambda
+    - Proc.new return instance is more forgiving in the number of args passed into 'call', created with 'lambda', the call will be more strict in receiving args
+    - different behavior in return/break/next
+      * Objects from Proc.new feature all of the interesting return, break, and next behavior. For example, if a Proc.new block executes an explicit return, Ruby will try to return not just from the block but from the method that created the block. This behavior is great for iterators, but it can be a disaster for applications that hang onto code blocks long after the method that created them has returned. 
+      * In contrast, the Proc object returned from lambda acts more like a portable method—a return from a lambda wrapped block will simply return from the block and no further.
+  * so, when to use 'Proc.new' when to use 'lambda'
+    - if you want the method to behave like regualr method with return/next/break, use 'Proc.new'
+    - else, use 'lambda'
+  * be aware of the behavior of 'closure'
+    - you many have some big/unwanted variable memories still dragging along with the closure
+
+- In the Wild 243
+
+  * RSpec use the it '...' do struct to execute tests
+  * in Rails, controller use code block to setup filters
+  * in ActiveRecord
+  * all of them says ... hey here is a block of code ... execute it when the timing is right
+
+  * Rake and Capistrano
+
+- Wrapping Up 244
+
+  * code block as a long-lived container of code
+  * explicit block parameter
+  * lambda
+
+===========================================================
 PART III: Metaprogramming 247
+===========================================================
 
+  * MetaProgramming in Ruby
+    - a set of techniques that allow you to get the result you need in less code
+    - how code can know its own context 
+    - how code can know the events in the context
+      * when a new class is created
+      * when methods gets called
+      * when app exit
+
+-----------------------------------------------------------
 Chapter 20: Use Hooks to Keep Your Program Informed 249
+-----------------------------------------------------------
 
 - Waking Up to a New Subclass 250
+
+  * stay informed to what happened
 
 Modules Want To Be Heard Too 253
 Knowing When Your Time Is Up 255
@@ -1775,7 +2002,9 @@ Staying Out of Trouble 257
 In the Wild 259
 Wrapping Up 261
 
+-----------------------------------------------------------
 Chapter 21: Use method_missing for Flexible Error Handling 263
+-----------------------------------------------------------
 Meeting Those Missing Methods 264
 Handling Document Errors 266
 Coping with Constants 267
@@ -1783,7 +2012,9 @@ In the Wild 268
 Staying Out of Trouble 270
 Wrapping Up 271
 
+-----------------------------------------------------------
 Chapter 22: Use method_missing for Delegation 273
+-----------------------------------------------------------
 The Promise and Pain of Delegation 274
 The Trouble with Old-Fashioned Delegation 275
 The method_missing Method to the Rescue 277
@@ -1792,7 +2023,9 @@ Staying Out of Trouble 279
 In the Wild 281
 Wrapping Up 283
 
+-----------------------------------------------------------
 Chapter 23: Use method_missing to Build Flexible APIs 285
+-----------------------------------------------------------
 Building Form Letters One Word at a Time 286
 Magic Methods from method_missing 287
 It’s the Users That Count—All of Them 289
@@ -1800,7 +2033,9 @@ Staying Out of Trouble 289
 In the Wild 290
 Wrapping Up 292
 
+-----------------------------------------------------------
 Chapter 24: Update Existing Classes with Monkey Patching 293
+-----------------------------------------------------------
 Wide-Open Classes 294
 Fixing a Broken Class 295
 Improving Existing Classes 296
@@ -1810,7 +2045,9 @@ In the Wild 299
 Staying Out of Trouble 303
 Wrapping Up 303
 
+-----------------------------------------------------------
 Chapter 25: Create Self-Modifying Classes 305
+-----------------------------------------------------------
 Open Classes, Again 305
 Put Programming Logic in Your Classes 308
 Class Methods That Change Their Class 309
@@ -1818,7 +2055,9 @@ In the Wild 310
 Staying Out of Trouble 314
 Wrapping Up 315
 
+-----------------------------------------------------------
 Chapter 26: Create Classes That Modify Their Subclasses 317
+-----------------------------------------------------------
 A Document of Paragraphs 317
 Subclassing Is (Sometimes) Hard to Do 319
 Class Methods That Build Instance Methods 321
@@ -1827,9 +2066,14 @@ The Modification Sky Is the Limit 324
 In the Wild 327
 Staying Out of Trouble 330
 Wrapping Up 332
-PART IV: Pulling It All Together 333
 
+===========================================================
+PART IV: Pulling It All Together 333
+===========================================================
+
+-----------------------------------------------------------
 Chapter 27: Invent Internal DSLs 335
+-----------------------------------------------------------
 Little Languages for Big Problems 335
 Dealing with XML 336
 Stepping Over the DSL Line 341
@@ -1838,7 +2082,9 @@ In the Wild 345
 Staying Out of Trouble 347
 Wrapping Up 349
 
+-----------------------------------------------------------
 Chapter 28: Build External DSLs for Flexible Syntax 351
+-----------------------------------------------------------
 The Trouble with the Ripper 352
 Internal Is Not the Only DSL 353
 Regular Expressions for Heavier Parsing 356
@@ -1847,7 +2093,9 @@ Staying Out of Trouble 360
 In the Wild 362
 Wrapping Up 364
 
+-----------------------------------------------------------
 Chapter 29: Package Your Programs as Gems 367
+-----------------------------------------------------------
 Consuming Gems 367
 Gem Versions 368
 The Nuts and Bolts of Gems 369
@@ -1858,7 +2106,9 @@ In the Wild 376
 Staying Out of Trouble 377
 Wrapping Up 380
 
+-----------------------------------------------------------
 Chapter 30: Know Your Ruby Implementation 381
+-----------------------------------------------------------
 A Fistful of Rubies 381
 MRI: An Enlightening Experience for the C Programmer 382
 YARV: MRI with a Byte Code Turbocharger 385
@@ -1868,6 +2118,8 @@ In the Wild 389
 Staying Out of Trouble 389
 Wrapping Up 390
 
+-----------------------------------------------------------
 Chapter 31: Keep an Open Mind to Go with Those Open Classes 391
+-----------------------------------------------------------
 
 Appendix: Going Further 393
