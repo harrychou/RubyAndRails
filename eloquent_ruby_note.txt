@@ -1994,8 +1994,82 @@ Chapter 20: Use Hooks to Keep Your Program Informed 249
 - Waking Up to a New Subclass 250
 
   * stay informed to what happened
+  * Hook: A Ruby hook is some way — sometimes by supplying a block and sometimes by just overriding a method—to specify the code to be executed when something specific happens.
+    - gain a subclass
+    - module was included
+    - program ready to terminate
 
-Modules Want To Be Heard Too 253
+  * get to know when a subclass is created:
+    - just use 'self.inherited( new_subclass )'
+    - maybe useful when you want to create documents for all classes and subclasses
+
+    class SimpleBaseClass
+      def self.inherited( new_subclass )
+        puts "Hey #{new_subclass} is now a subclass of #{self}!"
+      end
+    end    
+
+  * example: DocumentReader that has many subclasses, and the 'read' method that can based on each subclass' capacity delegate the call to appropriate subclasses
+
+    class DocumentReader
+
+      class << self
+        attr_reader :reader_classes
+      end
+
+      @reader_classes = []
+
+      def self.read(path)
+        reader = reader_for(path)
+        return nil unless reader
+        reader.read(path)
+      end
+
+      def self.reader_for(path)
+        reader_class = DocumentReader.reader_classes.find do |klass|
+          klass.can_read?(path)
+        end
+        return reader_class.new(path) if reader_class
+        nil
+      end
+
+      # One critical bit omitted, but stay tuned...
+      def self.inherited(subclass)
+        DocumentReader.reader_classes << subclass
+      end
+
+    end
+
+- Modules Want To Be Heard Too 253
+
+  * for modules, the included is the method to hook/monitor module inclusion
+
+    module WritingQuality
+      def self.included(klass)
+        puts "Hey, I've been included in #{klass}"
+      end
+      def number_of_cliches
+        # Body of method omitted...
+      end
+    end
+
+  * 
+
+    module UsefulInstanceMethods
+      def an_instance_method
+      end
+    end
+
+    module UsefulClassMethods
+      def a_class_method
+      end
+    end
+
+    class Host
+      include UsefulInstanceMethods
+      extend UsefulClassMethods
+    end
+
 Knowing When Your Time Is Up 255
 . . . And a Cast of Thousands 256
 Staying Out of Trouble 257
