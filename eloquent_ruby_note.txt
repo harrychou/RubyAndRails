@@ -2043,17 +2043,21 @@ Chapter 20: Use Hooks to Keep Your Program Informed 249
 - Modules Want To Be Heard Too 253
 
   * for modules, the included is the method to hook/monitor module inclusion
+    (for modules extension (becomes class methods) use 'extended')
 
     module WritingQuality
       def self.included(klass)
         puts "Hey, I've been included in #{klass}"
       end
+      def self.extended(klass)
+        puts "Hey, I've been extended in #{klass}"
+      end
       def number_of_cliches
         # Body of method omitted...
-      end
+      end 
     end
 
-  * 
+  * how to have both instance method and class method
 
     module UsefulInstanceMethods
       def an_instance_method
@@ -2070,9 +2074,48 @@ Chapter 20: Use Hooks to Keep Your Program Informed 249
       extend UsefulClassMethods
     end
 
-Knowing When Your Time Is Up 255
-. . . And a Cast of Thousands 256
-Staying Out of Trouble 257
+  * include and extend in one go:
+
+    module UsefulMethods
+      module ClassMethods
+        def a_class_method
+    end end
+      def self.included( host_class )
+        host_class.extend( ClassMethods )
+    end
+      def an_instance_method
+      end
+      # Rest of the module deleted...
+    end
+    class Host
+      include UsefulMethods
+    end  
+
+- Knowing When Your Time Is Up 255
+
+  * at_exit 
+    - the last chance to insert code before app existing
+    - instead of override it, provide/register code block
+
+    at_exit do
+      puts "Have a nice day."
+    end
+
+    - you can provide multiple code blocks by calling at_exit multiple times
+    - last register, first called
+
+- . . . And a Cast of Thousands 256
+
+  * other hooks
+    - method_missing
+    - method_added
+    - trace_var
+      (tracking value changes of global variables)
+
+- Staying Out of Trouble 257
+
+  * 
+
 In the Wild 259
 Wrapping Up 261
 

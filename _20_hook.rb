@@ -82,6 +82,28 @@ class XMLReader < DocumentReader
   end
 end
 
+
+module WritingQuality
+  def self.included(klass)
+    puts "Hey, I've been included in #{klass}"
+  end
+  def self.extended(klass)
+    puts "Hey, I've been extended in #{klass}"
+  end
+  def number_of_cliches
+    # Body of method omitted...
+  end 
+end
+
+class ClassA
+  include WritingQuality
+end
+
+class ClassB
+  extend WritingQuality
+end
+
+
 describe do
 
   it 'try hook' do
