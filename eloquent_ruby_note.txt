@@ -1960,6 +1960,9 @@ Chapter 19: Save Blocks to Execute Later 233
   * be aware of the behavior of 'closure'
     - you many have some big/unwanted variable memories still dragging along with the closure
 
+  * Ruby also supports a third way to create Proc instances, the 'proc' method. 
+    - in 1.8, proc was synonymous with lambda. In 1.9 it is more like Proc.new. 
+
 - In the Wild 243
 
   * RSpec use the it '...' do struct to execute tests
@@ -2111,13 +2114,50 @@ Chapter 20: Use Hooks to Keep Your Program Informed 249
     - method_added
     - trace_var
       (tracking value changes of global variables)
+    - most powerful set_trace_func
+      * supply a block
+      * trace whenever a method is called or returns
+      * whenever a class definition is opened with class keyword, or closed with end
+      * whenever a exception is raised
+      * whenever a line of code is executed
+
+      proc_object = proc do |event, file, line, id, binding, klass|
+        puts "#{event} in #{file}/#{line} #{id} #{klass}"
+      end
+      set_trace_func(proc_object)
+      require 'date'
 
 - Staying Out of Trouble 257
 
-  * 
+  * inherited
+    - same file or separated files, all class .... end subclass defnition will trigger
+    - for deeper hierarchy, all subclasses will trigger
 
-In the Wild 259
-Wrapping Up 261
+  * at_exit
+    - if Ruby is halfed, it will not get called
+
+- In the Wild 259
+
+  * Test::Unit
+    how all test code got executed?
+    by providing at_exit code block
+
+
+    at_exit do
+      unless $! || Test::Unit.run?
+        exit Test::Unit::AutoRunner.run
+      end
+    end
+
+    - check $! if there is any error (syntax error)
+    - check Test::Unit.run? to make sure the tests are not being executed
+
+- Wrapping Up 261
+
+  * look at serveral hooks in ruby
+    - inherited
+    - included
+    - at_exit
 
 -----------------------------------------------------------
 Chapter 21: Use method_missing for Flexible Error Handling 263
