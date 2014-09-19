@@ -2173,58 +2173,574 @@ Chapter 21: Use method_missing for Flexible Error Handling 263
     - how to use it
 
 - Meeting Those Missing Methods 264
-Handling Document Errors 266
-Coping with Constants 267
-In the Wild 268
-Staying Out of Trouble 270
-Wrapping Up 271
+
+  * when calling a non-existing method on an object
+    - the Ruby will try to call in current class and all parent classes
+    - if nothing found, Ruby will try to call 'method_missing' method
+    - the error we see is actually the default behavior of 'method_missing' in the 'Object' class that raised the 'NameError' exception
+
+    class Document
+      def method_missing (method_name, *args)
+        puts "try to call a non-existing method : #{method_name}"
+        puts "with args: #{args.join(' ')}" 
+      end
+    end
+
+- Handling Document Errors 266
+
+  * you can provide a default method_missing error message for your class
+
+    class Document
+      # Most of the class omitted...
+      def method_missing( method_name, *args )
+        msg =  %Q{
+          You tried to call the method #{method_name}
+           on an instance of Document. There is no such method.
+        }
+        raise msg 
+      end
+    end
+
+  * or just bubble it up for super class to handle (maybe with some logging)
+
+    class Document
+      # Most of the class omitted...
+      def method_missing( method_name, *args )
+        File.open( 'document.error', 'a' ) do |f|
+          f.puts( "Bad method called: #{method_name}" )
+          f.puts( "with #{args.size} arguments" )
+        end
+        super 
+      end
+    end
+
+  * or even be fancy and provide help to the caller
+
+    require 'text'  # From the text gem
+    class Document
+      include Text
+        # Most of the class omitted...
+      def method_missing( missing, *args )
+        candidates = methods_that_sound_like( missing.to_s )
+        message = "You called an undefined method: #{missing}."
+        unless candidates.empty?
+          message += "\nDid you mean #{candidates.join(' or ')}?"
+        end
+        raise raise NoMethodError.new( message )
+      end
+      def methods_that_sound_like( name )
+        missing_soundex = Soundex.soundex( name.to_s )
+        public_methods.sort.find_all do |existing|
+          existing_soundex = Soundex.soundex( existing.to_s )
+          missing_soundex == existing_soundex
+        end
+      end 
+    end
+
+- Coping with Constants 267
+
+  * what is constant?
+    - CONSTANT_NAME
+    - Document::CONSTANT_NAME
+
+    def self.const_missing( const_name ) 
+      msg = %Q{
+        You tried to reference the constant #{const_name}
+        There is no such constant in the Document class.
+      }
+      puts msg
+      #raise msg 
+    end
+
+- In the Wild 268
+
+  * 'whiny nil'
+    - to solve the problem of checking nil
+    - if you accidentally have a nil object 
+    - when you try to do anything on the nil object, you will see the error
+  * Rails handle 'whiny nil'
+    - providing more friendly error message
+    - provide reasons
+  * Rake use 'const_missing' for obsolete variables
+    - by helpfully delegate to the correct method
+    - by providng a warning message
+  * Rails also use 'const_missing' to load Ruby class as needed
+
+    def self.const_missing( name )
+      file_name = "#{name.to_s.downcase}"
+      require file_name
+      raise "Undefined: #{name}" unless const_defined?(name)
+      const_get(name)
+    end
+
+- Staying Out of Trouble 270
+
+  * don't use it unless you need it
+  * if you call something non_existing within method_missing, it will become infinite loop
+  * do more testing
+
+- Wrapping Up 271
+
+  * method_missing and const_missing
+  * method_missing is not only for error handling, can be used for delegating
 
 -----------------------------------------------------------
 Chapter 22: Use method_missing for Delegation 273
 -----------------------------------------------------------
-The Promise and Pain of Delegation 274
-The Trouble with Old-Fashioned Delegation 275
-The method_missing Method to the Rescue 277
-More Discriminating Delegation 278
-Staying Out of Trouble 279
-In the Wild 281
-Wrapping Up 283
+
+  * imporatnce of 'delegation'
+  * how to use method_missing for delegation
+
+- The Promise and Pain of Delegation 274
+
+  * what is delegation in code?
+    - one object holding another object
+    - all method calls to the first object will in turns call second object
+  * traditionally we use some kind of 'wrapper'
+
+    class SuperSecretDocument
+      def initialize(original_document, time_limit_seconds)
+        @original_document = original_document
+        @time_limit_seconds = time_limit_seconds
+        @create_time = Time.now
+      end
+      def time_expired?
+        Time.now - @create_time >= @time_limit_seconds
+      end
+      def check_for_expiration
+        raise 'Document no longer available' if time_expired?
+      end
+      def content
+        check_for_expiration
+        return @original_document.content
+      end
+      def title
+        check_for_expiration
+        return @original_document.title
+      end
+      def author
+        check_for_expiration
+        return @original_document.author
+      end
+      # and so on...
+    end
+
+  * the new wrapper check if the time expired? if not then delegate to the original doc
+
+- The Trouble with Old-Fashioned Delegation 275
+
+  * wrapper's problem
+    - all methods need to be replicated in wrapper and original obj
+    - tightly coupling
+
+- The method_missing Method to the Rescue 277
+
+  * instead of mapping methods one by one
+
+  def method_missing(name, *args)
+    check_for_expiration
+    @original_document.send(name, *args)
+  end
+
+  * send can be used to get around 'public/private' restriction
+  * even if the user mistype a method name, it is still captured by the original doc
+  * this class can also be used as a 'generic' wrapper, this is really useful  
+
+- More Discriminating Delegation 278
+
+  * if want to restrict which methods to delegate
+
+    class SuperSecretDocument
+      # Lots of code omitted...
+      DELEGATED_METHODS = [ :content, :words ]
+      def method_missing(name, *args) check_for_expiration
+        if DELEGATED_METHODS.include?( name )
+          @original_document.send(name, *args)
+        else
+          super 
+        end
+      end 
+    end
+
+- Staying Out of Trouble 279
+
+  * one gotcha, there are methods inherited from Object that the wrapper will have and so will not trigger method_missing
+  * to avoid it, use the bare primitive BasicObject which does not have any methods
+    - but this require some minor code change since you don't enjoy some Object goodness too
+
+- In the Wild 281
+
+  * the delegate.rb file in standard library provide many classes for generic wrapper/degator
+  * simple delegator
+
+    require 'delegate'
+    class DocumentWrapper < SimpleDelegator
+      def initialize( real_doc )
+        super( real_doc )
+      end
+    end
+
+  * ActiveRecord use method_missing to delgate to datbase actions
+    - User.first_name will use method_missing to find value
+    - new ActiveRecord enhance it and create the method dynamically, so subsequent calls will not go through method_missing
+  * for Ruby 1.8, use 'blankslate' gem instead of 'BasicObject'
+
+- Wrapping Up 283
+
+  * use method_missing for delegation
 
 -----------------------------------------------------------
 Chapter 23: Use method_missing to Build Flexible APIs 285
 -----------------------------------------------------------
-Building Form Letters One Word at a Time 286
-Magic Methods from method_missing 287
-It’s the Users That Count—All of Them 289
-Staying Out of Trouble 289
-In the Wild 290
-Wrapping Up 292
+
+  * it's difficult to provide/design a good interface for your API
+  * API interface
+    - methods and args
+    - how to call them
+    - using 'method_missing' to design a flexible API
+    - allow users to make up method names for their own uses
+
+- Building Form Letters One Word at a Time 286
+
+  * example: replace content with template
+
+    class FormLetter 
+      attr_accessor :content
+
+      def replace_word( old_word, new_word )
+        @content.gsub!( old_word, "#{new_word}" )
+      end
+
+    end  
+
+
+- Magic Methods from method_missing 287
+
+  * use method missing to handle it
+    - only handle missing method starts with 'replace_'
+    - if not 'replace_', call super to let the default method_missing handles it
+  * this technique is also called 'magic method'
+
+    class FormLetter 
+      attr_accessor :content
+
+      def replace_word( old_word, new_word )
+        @content.gsub!( old_word, "#{new_word}" )
+      end
+
+
+      def method_missing( name, *args )
+        string_name = name.to_s
+        return super unless string_name =~ /^replace_\w+/
+        old_word = extract_old_word(string_name)
+        replace_word( old_word, args.first )
+      end
+
+      def extract_old_word( name )
+        name_parts = name.split('_')
+        name_parts[1].upcase
+      end
+
+    end
+
+- It’s the Users That Count—All of Them 289
+
+  * why doing flexible API work?
+    - make code easy to read and write
+
+- Staying Out of Trouble 289
+
+  * be aware of possible name collision
+  * consider to rewrite respond_to? to reflect the fact that the class now respond to these API methods
+
+- In the Wild 290
+
+  * OpenStruct class
+    - blend of simple data container and hash
+    - allow to use obj.xxx = yyyy syntax
+
+    require 'ostruct'
+    author = OpenStruct.new
+    author.first_name = 'Stephen'
+    author.last_name = 'Hawking'
+    puts author.first_name
+    puts author.last_name
+
+  * how OpenStruct is implemented:
+    - if method name ends with '=', it is a setter
+    - if method name does not end with '=', it is a getter
+
+    def method_missing(mid, *args) # :nodoc:
+      mname = mid.id2name
+      len = args.length
+      if mname =~ /=$/
+        # Some error handling deleted... 
+        mname.chop! 
+        self.new_ostruct_member(mname) 
+        @table[mname.intern] = args[0]
+      elsif len == 0
+        @table[mid]
+      else
+        raise NoMethodError,
+          "undefined method `#{mname}' for #{self}", caller(1)
+      end
+    end
+
+  * ActiveRecord::Base
+    - find_by_xxxxx
+    - find_by_xxxxx_and_yyyyy
+    - very flexible
+
+- Wrapping Up 292
+  
+  * virtual methods:
+    - using method_missing to capture the methods
+    - parse the requested method name and handle it 
 
 -----------------------------------------------------------
 Chapter 24: Update Existing Classes with Monkey Patching 293
 -----------------------------------------------------------
-Wide-Open Classes 294
-Fixing a Broken Class 295
-Improving Existing Classes 296
-Renaming Methods with alias_method 297
-Do Anything to Any Class, Anytime 299
-In the Wild 299
-Staying Out of Trouble 303
+
+  * open class
+  * you can change the behavior of any class at any time
+    - add methods
+    - change code of methods
+    - delete method
+  * controversial
+    - but very practical and useful
+
+- Wide-Open Classes 294
+
+  * the first time you define a class --> the class is created
+  * the second time you define a class --> you modify (add methods) class
+  * the added methods are available to all objects, even it is instantiate before the modification
+
+- Fixing a Broken Class 295
+
+  * you can also modify the existing methods
+    (last defined wins)
+  * NaN (caused by divided by zero) example
+  * modify methods on the fly is called 'Monkey Patching'
+
+- Improving Existing Classes 296
+
+  * example: handle string + Document
+    - so we can have 'some content' + doc to return a new document object
+    - existing string's '+' needs to be preserved 
+
+  class String
+    def +( other )
+      if other.kind_of? Document
+        new_content = self + other.content
+        return Document.new(other.title, other.author, new_content)
+      end
+      result = self.dup
+      result << other.to_str
+      result
+    end 
+  end
+
+- Renaming Methods with alias_method 297
+
+  * use alias_method to capture the existing method before 'monkey patching' it
+
+    class String
+      alias_method :old_addition, :+
+      def +( other )
+        if other.kind_of? Document
+          new_content = self + other.content
+          return Document.new(other.title, other.author, new_content)
+        end
+        old_addition(other)
+      end 
+    end
+
+- Do Anything to Any Class, Anytime 299
+
+  * there are other things you can do to an existing class
+  * public to private or private to public
+
+  class Document
+    private :word_count
+  end
+
+  class Document
+    public :word_count
+  end
+
+  * even remove the method
+
+  class Document
+    remove_method :word_count
+  end
+
+- In the Wild 299
+
+  * Pathname class
+    - a very large class
+    - separated out into nine places using open class technique
+  * Just to make built-in classes more friendly for certain scenarioes
+    - ActiveSupport
+    - in web programming, we need to test blank string
+
+    class String #:nodoc:
+      def blank?
+        self !~ /\S/
+      end
+    end
+
+    - or need to squish consecutive empty spaces in a string
+
+    module ActiveSupport #:nodoc:
+      module CoreExtensions #:nodoc:
+        module String #:nodoc:
+          module Filters
+            # Some code deleted...
+            def squish!
+              strip!
+              gsub!(/\s+/, ' ')
+              self 
+            end
+          end 
+        end
+      end 
+    end
+
+    ...
+
+    class String
+      # Lots of stuff deleted...
+      include ActiveSupport::CoreExtensions::String::Filters
+    end
+
+  * ActiveRecord
+    - you can call first/second/third/ ...
+
+- Staying Out of Trouble 303
+
+  * possiblity of name collision (accidentally overwrite or be overwritten)
+  * know what you are doing and run tests
+  * be extra-cautious on basic/fundamental classes such as string
+
 Wrapping Up 303
+
+  * there are other ways to modify a class
 
 -----------------------------------------------------------
 Chapter 25: Create Self-Modifying Classes 305
 -----------------------------------------------------------
-Open Classes, Again 305
-Put Programming Logic in Your Classes 308
-Class Methods That Change Their Class 309
-In the Wild 310
-Staying Out of Trouble 314
-Wrapping Up 315
+
+  * how does classes in Ruby got defined?
+  * build classes that can programmatically modify itself
+
+- Open Classes, Again 305
+
+  * in ruby, class code is executable
+  * when ruby see class XXX, it creates the class
+  * when ruby see def ...., it creates methods
+
+- Put Programming Logic in Your Classes 308
+
+  * class can make run-time decisions about what methods to define and what is the code in each method
+    - ENCRYPTION_ENABLED is defined run_time
+
+    class Document
+      # Lots of code omitted...
+      def save( path )
+        File.open( path, 'w' ) do |f|
+          f.puts( encrypt( @title ))
+          f.puts( encrypt( @author ) )
+          f.puts( encrypt( @content ))
+        end 
+      end
+
+      if ENCRYPTION_ENABLED
+        def encrypt( string )
+          string.tr( 'a-zA-Z', 'm-za-lM-ZA-L')
+        end
+      else
+        def encrypt( string )
+          string 
+        end
+      end 
+    end
+
+ 
+- Class Methods That Change Their Class 309
+
+  * use Class Methods to dynamically define methods
+    - use the fact that 'self' refer to the class in Class Methods
+
+    class Document
+       # Most of the class left behind...
+      def self.enable_encryption( enabled )
+        if enabled
+          def encrypt_string( string )
+            string.tr( 'a-zA-Z', 'm-za-lM-ZA-L')
+          end 
+        else
+          def encrypt_string( string )
+            string
+          end 
+        end
+      end
+      enable_encryption( ENCRYPTION_ENABLED )
+    end
+
+- In the Wild 310
+
+  * handling different version of Ruby environments
+    - use built-in RUBY_VERSION
+
+    class Document
+      # Lots of stuff omitted...
+      if RUBY_VERSION >= '1.9'
+        def char_at( index )
+          @content[ index ]
+        end
+      else
+        def char_at( index )
+          @content[ index ].chr
+        end
+      end 
+    end
+
+  * Rails reloading mechanism
+    - 'load' is supplied by Rails that will reload the file itself
+      (require will only load the class if not already loaded)
+    - __FILE__: provided by Ruby, the file that defines the class itself
+    - 'remove_instance_methods' to remove all previous defined methods
+
+    class Document
+      def self.reload
+        remove_instance_methods
+        load( __FILE__ )
+      end
+      def self.remove_instance_methods
+        instance_methods(false).each do |method|
+          remove_method(method)
+        end
+      end      
+      # Rest of the class omitted...
+    end
+
+- Staying Out of Trouble 314
+
+  * since we conditionally execute dynamic definition of classes
+    if there is any exception during the code, it will cause unexpected behavior
+  * need testing
+
+- Wrapping Up 315
+
+  * Ruby class are just executable code
+  * you can insert logic in class definition
 
 -----------------------------------------------------------
 Chapter 26: Create Classes That Modify Their Subclasses 317
 -----------------------------------------------------------
+
+  * importance of being lazy
+  * 
 A Document of Paragraphs 317
 Subclassing Is (Sometimes) Hard to Do 319
 Class Methods That Build Instance Methods 321
@@ -2241,6 +2757,7 @@ PART IV: Pulling It All Together 333
 -----------------------------------------------------------
 Chapter 27: Invent Internal DSLs 335
 -----------------------------------------------------------
+
 Little Languages for Big Problems 335
 Dealing with XML 336
 Stepping Over the DSL Line 341
@@ -2252,6 +2769,7 @@ Wrapping Up 349
 -----------------------------------------------------------
 Chapter 28: Build External DSLs for Flexible Syntax 351
 -----------------------------------------------------------
+
 The Trouble with the Ripper 352
 Internal Is Not the Only DSL 353
 Regular Expressions for Heavier Parsing 356
@@ -2263,6 +2781,7 @@ Wrapping Up 364
 -----------------------------------------------------------
 Chapter 29: Package Your Programs as Gems 367
 -----------------------------------------------------------
+
 Consuming Gems 367
 Gem Versions 368
 The Nuts and Bolts of Gems 369
@@ -2276,6 +2795,7 @@ Wrapping Up 380
 -----------------------------------------------------------
 Chapter 30: Know Your Ruby Implementation 381
 -----------------------------------------------------------
+
 A Fistful of Rubies 381
 MRI: An Enlightening Experience for the C Programmer 382
 YARV: MRI with a Byte Code Turbocharger 385
