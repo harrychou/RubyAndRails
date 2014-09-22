@@ -2980,9 +2980,112 @@ PART IV: Pulling It All Together 333
 Chapter 27: Invent Internal DSLs 335
 -----------------------------------------------------------
 
-Little Languages for Big Problems 335
-Dealing with XML 336
-Stepping Over the DSL Line 341
+  * Rake/RSpec/ActiveRecord all examples of DSL
+  * how to build DSL in Ruby
+  * internal DSL?
+  * start with API, grow into DSL
+
+- Little Languages for Big Problems 335
+  
+  * designing programming languages are all about 'trade-offs'
+  * Ruby is general purpose, which might not be great for some scenaiors
+  * DSL: domain specific languages
+  * internal/external DSL
+    - external: use parser/compiler, external to the implementation language
+    - internal: you can leverage the implemantion lanauge for you
+  * Ruby is a great tool for internal DSL
+
+- Dealing with XML 336
+
+  * example: parsing XML
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <document>
+      <title>The Fellowship Of The Ring</title>
+      <author>J. R. R. Tolken</author>
+      <published>1954</published>
+      <chapter>
+        <title>A Long Expected Party</title>
+        <content>When Mr. Bilbo Bagins of Bag End...</content>
+      </chapter>
+      <chapter>
+        <title>A Shadow Of The Past</title>
+        <content>The talk did not die down...</content>
+      </chapter>
+      <!-- ect -->
+    </document>
+
+  * Ruby code: use XPath
+
+    #!/usr/bin/env ruby
+    require "rexml/document"
+    File.open( 'fellowship.xml' ) do |f|
+      doc = REXML::Document.new(f)
+      author = REXML::XPath.first(doc, '/document/author')
+      puts author.text
+
+      REXML::XPath.each(doc, '/document/chapter/title') do |title|
+        puts title.text
+      end      
+    end
+
+  * improving the API
+
+    class XmlRipper
+      def initialize(&block)
+        @before_action = proc {}
+        @path_actions = {}
+        @after_action = proc {}
+        block.call( self ) if block
+      end
+      def on_path( path, &block )
+        @path_actions[path] = block
+      end
+      def before( &block )
+        before_action = block
+      end
+      def after( &block )
+        @after_action = block
+      end
+      def run( xml_file_path )
+        File.open( xml_file_path ) do |f|
+          document = REXML::Document.new(f)
+          @before_action.call( document )
+          run_path_actions( document )
+          @after_action.call( document )
+        end
+      end
+      def run_path_actions( document )
+        @path_actions.each do |path, block|
+          REXML::XPath.each(document, path) do |element|
+            #puts path + "....." 
+            block.call( element )
+          end
+        end
+      end
+    end
+
+    ....
+
+    ripper = XmlRipper.new do |r|
+      # r.on_path( '/document/author' ) { |a| puts "AUTHOR: " << a.text }
+      r.on_path( '/document/chapter/title' ) { |t| puts t.text }
+
+      r.on_path( '/document/author' ) do |author|
+        author.text = 'J.R.R. Tolkien'
+      end
+      r.after { |doc| 
+        puts "================================"
+        puts doc 
+        puts "================================"
+      }
+    end
+    ripper.run( 'fellowship.xml' )
+
+- Stepping Over the DSL Line 341
+
+
+
 Pulling Out All the Stops 344
 In the Wild 345
 Staying Out of Trouble 347
