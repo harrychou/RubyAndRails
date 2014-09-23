@@ -1,0 +1,5 @@
+on_path( '/document/author' ) do |author|
+  author.text = 'J.R.R. Tolkien Harry'
+end
+after { |doc| puts doc }
+on_document_author { |author| puts 'Hahaha: ' + author.text }

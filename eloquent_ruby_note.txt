@@ -3017,7 +3017,7 @@ Chapter 27: Invent Internal DSLs 335
 
   * Ruby code: use XPath
 
-    #!/usr/bin/env ruby
+    #!/usr/bin/env ruby   
     require "rexml/document"
     File.open( 'fellowship.xml' ) do |f|
       doc = REXML::Document.new(f)
@@ -3083,25 +3083,286 @@ Chapter 27: Invent Internal DSLs 335
     ripper.run( 'fellowship.xml' )
 
 - Stepping Over the DSL Line 341
+  
+  * use instance_eval() to get rid of r.
 
+    def initialize(&block) 
+      @before_action = proc {} 
+      @path_actions = {} 
+      @after_action = proc {} 
+      instance_eval( &block ) if block
+    end
 
+    ... the code becomes
 
-Pulling Out All the Stops 344
-In the Wild 345
-Staying Out of Trouble 347
-Wrapping Up 349
+    ripper = XmlRipper.new do
+      on_path( '/document/author' ) do |author|
+        author.text = 'J.R.R. Tolkien'
+      end
+      after { |doc| puts doc }
+    end
+
+  * one step furthur, put the initialization block to external file
+
+    class XmlRipper
+      def initialize_from_file( path )
+        instance_eval( File.read( path ) )
+      end
+      # Rest of the class omitted...
+    end
+
+    ... content of the file
+
+    on_path( '/document/author' ) do |author|
+      author.text = 'J.R.R. Tolkien'
+    end
+    after { |doc| puts doc }
+
+    ... now your code is like this
+
+    r = XmlRipper.new
+    r.initialize_from_file( ARGV[0] )
+    r.run( ARGV[1] )
+
+- Pulling Out All the Stops 344
+
+  * add some metaprogramming technique for even more flexibility
+
+    def method_missing( name, *args, &block )
+      return super unless name.to_s =~ /on_.*/
+      parts = name.to_s.split( "_" )
+      parts.shift
+      xpath = parts.join( '/' )
+      on_path( xpath, &block  )
+    end
+
+    ... now you can do this
+
+    on_document_author { |author| puts 'Hahaha: ' + author.text }
+
+- In the Wild 345
+
+  * RSpec uses this internal DSL
+    - describe is just a method that eval the whole block
+    - 'it' is also a method that accept string and code block
+
+    describe '....' do 
+      ...
+      it 'dddsd' do 
+        ...
+      end
+    end
+
+  * Rake use internal DSL to provide task definition syntax
+
+    task :default => [ :install_program , :install_data ]
+    task :install_data => :installation_dir do
+      cp 'fonts.dat', 'installation'
+    end
+    task :install_program => [ :installation_dir ] do
+      cp 'document.rb', 'installation'
+    end
+    task :installation_dir do
+      mkdir_p 'installation'
+    end
+
+  * ActiveRecord and Migration API
+    (reads just like description instead of command)
+
+    class Book < ActiveRecord::Base
+      has_many :authors
+      belongs_to :publisher
+    end
+
+    ...
+
+    class AddBooks < ActiveRecord::Migration
+      def self.up
+        create_table :books do |t|
+          t.string  :title
+          t.integer :publisher_id
+        end 
+      end
+      def self.down
+        drop_table :books
+      end 
+    end
+
+- Staying Out of Trouble 347
+
+  * downsides
+    - bad error messages
+      the error only says the instance_eval() error
+      (this can be fixed by pass into instance_eval a second parameter of the DSL file's path)
+    - support DSL , but also make API still available
+    - programmer might be over-enthusiastic
+      you can only push Ruby's parser to its limit
+
+- Wrapping Up 349
+
+  * use the flexibility of Ruby to solve new area's of problems
+  * friendly API or internal DSL
 
 -----------------------------------------------------------
 Chapter 28: Build External DSLs for Flexible Syntax 351
 -----------------------------------------------------------
 
-The Trouble with the Ripper 352
-Internal Is Not the Only DSL 353
-Regular Expressions for Heavier Parsing 356
-Treetop for Really Big Jobs 358
-Staying Out of Trouble 360
-In the Wild 362
-Wrapping Up 364
+  * because people build amazing internal DSL using Ruby, external DSL is sometimes overlooked
+  * why would we want to build a parser instead of using Ruby
+  * Ruby tools to create external DSL
+  * some existing external DSLs
+
+- The Trouble with the Ripper 352
+
+  * example: if we want to furthur simplify
+
+    on_path( '/document/author' ) { |author| 
+      puts author.text 
+      # ...
+    }
+
+    .... to 
+
+    print /document/author
+    delete /document/published
+    replace /document/author Tolkien
+
+  * this syntax is outside of Ruby's syntax rules and not possible to be internal DSL
+
+- Internal Is Not the Only DSL 353
+
+  * external DSL
+    - has its own sytax (grammar rules)
+    - build its own parser
+    - (we can use Ruby's string manipulattion and regular expression)
+  * parse statements and translates into XmlRipper methods
+    - we can enhance features such as exception handler
+    - or, add new statements
+    - or, allow comment
+
+    class EzRipper
+      def initialize( program_path )
+        @ripper = XmlRipper.new
+        parse_program(program_path)
+      end
+      def run( xml_file )
+        @ripper.run( xml_file )
+      end
+      def parse_program( program_path )
+        File.open(program_path) do |f|
+          until f.eof?
+            parse_statement( f.readline )
+          end 
+        end
+      end
+      def parse_statement( statement )
+        tokens = statement.strip.split
+        return if tokens.empty?
+        case tokens.first
+        when 'print'
+          @ripper.on_path( tokens[1] ) do |el|
+            puts el.text
+          end
+        when 'delete'
+          @ripper.on_path( tokens[1] ) { |el| el.remove }
+        when 'replace'
+          @ripper.on_path( tokens[1] ) { |el| el.text = tokens[2] }
+        when 'print_document'
+          @ripper.after do |doc|
+            puts doc 
+          end
+        else
+          raise "Unknown keyword: #{tokens.first}"
+        end 
+      end
+    end
+
+- Regular Expressions for Heavier Parsing 356
+
+  * use regular expression for heavier parsing
+  * example: white space handling
+  * more complicated, but better parsing
+
+    def parse_statement( statement )
+      statement = statement.sub( /#.*/, '' )
+      case statement.strip
+      when ''
+        # Skip blank lines
+      when /print\s+(.*?)/ 
+        @ripper.on_path( $1 ) do |el|
+          puts el.text
+        end
+      when /delete\s+(.*?)/
+        @ripper.on_path( $1 ) { |el| el.remove }
+      when /replace\s+(.*?)\s+'(.*?)'$/ 
+        @ripper.on_path( $1 ) { |el| el.text = $2 }
+      when /uppercase\s+(.*?)/
+        @ripper.on_path( $1 ) { |el| el.text = el.text.upcase }
+      when /print_document/
+        @ripper.after do |doc|
+          puts doc 
+        end
+      else
+        raise "Don't know what to do with: #{statement}"
+      end 
+    end
+
+- Treetop for Really Big Jobs 358
+
+  * regex is still not parsing tool. when syntax gets complicated, regular expression becomes hard and write, and even harder to read
+  * Treetop is the tool of building languages
+
+    grammar EzRipperStatement
+      rule statement
+        comment/delete_statement/replace_statement/print_statement
+      end
+      rule comment
+          "#" .*
+      end
+      rule delete_statement
+          "delete" sp quoted_argument sp
+      end
+      rule replace_statement
+          "replace" sp quoted_argument sp quoted_argument sp
+      end
+      rule print_statement
+          "filter" sp quoted_argument sp
+      end
+      rule quoted_argument
+          "'" argument "'"
+      end
+      rule argument
+          (!"'" . )*
+      end
+      rule sp
+        [ \t\n]*
+      end 
+    end
+
+  * Treetop will take the grammar file and output the Ruby code that can parse the language
+  * The parse result will be a parse_tree that Ruby can understand and work on 
+
+- Staying Out of Trouble 360
+
+  * parsing language is not a easy task
+  * example: Haml syntax and parsing
+  * will my language worth the effort of parsing
+  * Haml allows internal Ruby code mixed in external DSL
+  * example:
+
+    when /execute\s+'(.*?)'\s+'(.*?)'$/
+      @ripper.on_path( $1 ) { |el| eval( $2 ) }
+
+- In the Wild 362
+
+  * Haml
+  * ERB
+  * Cucumber
+  * Treetop itself is the parser for Treetop
+
+- Wrapping Up 364
+
+  * DSL? internal or external?
 
 -----------------------------------------------------------
 Chapter 29: Package Your Programs as Gems 367
