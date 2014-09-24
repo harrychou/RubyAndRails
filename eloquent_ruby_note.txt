@@ -3368,31 +3368,302 @@ Chapter 28: Build External DSLs for Flexible Syntax 351
 Chapter 29: Package Your Programs as Gems 367
 -----------------------------------------------------------
 
-Consuming Gems 367
-Gem Versions 368
-The Nuts and Bolts of Gems 369
-Building a Gem 370
-Uploading Your Gem to a Repository 374
-Automating Gem Creation 375
-In the Wild 376
-Staying Out of Trouble 377
-Wrapping Up 380
+  * ship the product
+  * gem: ruby's mechanism to ship code
+    - how gem works
+    - details of building gem
+    - ensure gem delivery (security)
+    - some useful gems for packaging your gem
+
+- Consuming Gems 367
+
+  gem install ruby-mp3info
+
+  ... to use
+
+  require 'mp3info'
+  Mp3Info.open( 'money.mp3' ) do |info|
+    puts "title: #{info.tag.title}"
+    puts "artist: #{info.tag.artist}"
+    puts "album: #{info.tag.album}"
+  end
+
+- Gem Versions 368
+
+  * different versions of the same gem can exist in the same repository
+  * to list out the versions of gem
+    - -a: list all
+    - --remote: include remote respository
+
+    gem list -a --remote ruby-mp3info
+
+    ... returns
+
+    ruby-mp3info (0.6.13, 0.6.12, 0.6.11, 0.6.10, 0.6.9, 0.6.8, 0.6.7, 0.6.6, 0.6.5, 0.6.4, 0.6.3, 0.6.2, 0.6.1, 0.6, 0.5.1, 0.5, 0.4)
+
+  * install specific version of gem
+
+    gem install --version 0.4 ruby-mp3info
+
+  * to ask for a specific gem version
+    - can use >, = or <=
+
+    gem 'ruby-mp3info', '=0.5'
+    require 'mp3info'
+
+- The Nuts and Bolts of Gems 369
+
+  * process of creating gem
+    - developers provide metadata files with ruby files
+    - archive file as gem file
+    - upload to gem respository
+  * VCIS: version conflict induced inSanity
+    - DLL hell
+    - JAR hell
+  * gem file is just TAR file which contains two more TAR files
+    - first TAR files
+      * Ruby source code
+      * executables
+      * readme file
+    - second TAR files
+      * version/authorship/dependency info
+  * installation of gem
+    - unpack gem file into directory that is available for require/load
+    - more details
+
+- Building a Gem 370
+
+  * how to create gem
+    - organize code in directory that conform to gem spec
+    - provide metadata
+  * folder structore
+    - top level direcotry same name as your gem
+    - lib folder holds the Ruby code (usually same name as your gem)
+    - spec folder hold unit tests
+
+    document/
+      Rakefile
+      README
+      document.gemspec
+      lib/
+        document.rb
+    ￼￼spec/
+        document_spec.rb
+
+    - andother example
+      * text?
+      * within text.rb just require all the underneath files
+
+    text/
+      Rakefile
+      README.rdoc
+      lib/
+    ￼￼￼￼text.rb
+        text/
+    ￼￼    soundex.rb
+          metaphone.rb
+          ...
+      test/
+    ￼￼  test_soundex.rb
+        test_metaphone.rb
+      ...
+
+    ... in text.rb
+
+    require 'text/util'
+    require 'text/double_metaphone'
+    require 'text/levenshtein'
+    require 'text/metaphone'
+    require 'text/porter_stemming'
+    require 'text/soundex'
+    require 'text/version'
+
+  * metadata
+    - gemfile
+    - add_dependency
+
+    Gem::Specification.new do |s|
+      s.name = "document"
+      s.version = "1.0.1"
+      s.authors = ["Russ Olsen"]
+      s.date = %q{2010-01-01}
+      s.description = 'Document - Simple document class'
+      s.summary = s.description
+      s.email = 'russ@russolsen.com'
+      s.files = ['README', 'lib/document.rb','spec/document_spec.rb']
+      s.homepage = 'http://www.russolsen.com'
+      s.has_rdoc = true
+      s.rubyforge_project = 'simple_document'
+      s.add_dependency('text', '= 0.1.13' )
+    end
+  
+  * how to build
+    gem build document.gem
+  
+- Uploading Your Gem to a Repository 374
+
+  * for repository, default:
+    http://gems.rubyforge.org
+  * Gemcutter
+    - gem install gemcutter
+    - gem push xxx.gem
+
+- Automating Gem Creation 375
+
+  * you can use Rake to automate the process
+
+    require 'spec/rake/spectask'
+    require 'rake/gempackagetask'
+    task :default =>  [ :spec, :gem ]
+    Spec::Rake::SpecTask.new do |t|
+      t.spec_files = FileList['spec/**/*_spec.rb']
+    end
+    gem_spec = Gem::Specification.new do |s|
+      s.name = "document"
+      s.version = "1.0.1"
+      s.authors = ["Russ Olsen"]
+      s.date = %q{2010-05-23}
+      s.description = 'Document - Simple document class'
+      s.summary = s.description
+      s.email = 'russ@russolsen.com'
+      s.files = ['README','lib/document.rb', 'spec/document_spec.rb']
+      s.homepage = 'http://www.russolsen.com'
+      s.has_rdoc = true
+      s.rubyforge_project = 'simple_document'
+    end
+    Rake::GemPackageTask.new( gem_spec ) do |t|
+      t.need_zip = true
+    end    
+
+  * to push
+
+    task :push => :gem do |t|
+      sh "gem push pkg/#{gem_spec.name}-#{gem_spec.version}.gem"
+    end
+
+- In the Wild 376
+
+  * tools to help building gem
+    - hoe
+      (create the skeleton for you)
+
+- Staying Out of Trouble 377
+
+  * gem name collision
+  * you may have same Ruby class
+    - to avoid, use Module as namespace
+  * you may have same Ruby file
+    - by defaule Ruby will load the one from Gem
+    - you can also force to load local one
+
+      dir = File.expand_path( File.dirname(__FILE__) )
+      require File.join( dir, 'document' )
+
+  * avoid missing dependency
+    - test on a brand new Ruby environment
+  * avoid specifying gems you don't really need
+    - stop and think
+  * honor 'location independency'
+    - you should not have to know the location of specific ruby file
+
+    def read_default_font_file
+      File.read( "#{File.dirname(__FILE__)}/times_roman_12.font")
+    end
+
+  * test in realistic environments
+
+- Wrapping Up 380
+
+  * deployment/installation is the real test of software quality
 
 -----------------------------------------------------------
 Chapter 30: Know Your Ruby Implementation 381
 -----------------------------------------------------------
 
-A Fistful of Rubies 381
-MRI: An Enlightening Experience for the C Programmer 382
-YARV: MRI with a Byte Code Turbocharger 385
-JRuby: Bending the “J” in the JVM 387
-Rubinius 388
-In the Wild 389
-Staying Out of Trouble 389
-Wrapping Up 390
+  * having lower level knowlege help you become better programmers, even though you are not working at the lower level
+  * C and Java implementation
+  * know your tool
+
+- A Fistful of Rubies 381
+
+  * at the time of writing the book, it is 1.8 to 1.9 migration
+  * different implementations:
+    - original Matz
+      * MRI: Matz's Ruby Interpreter
+      * written in C
+      * supports 1.8.7
+    - Yet another Ruby VM
+      * YARV
+      * ready to take over
+      * written in C
+      * supports 1.9.x
+    - JRuby
+      * Ruby for JVM
+      * 1.8 ready to support 1.9
+    - other lesser known ones
+      * Rubinius: Ruby written in Ruby
+      * IronRuby: .net CLR
+      * Cardinal: Parrot, a VM that aims to host multiple dynamic languages
+
+- MRI: An Enlightening Experience for the C Programmer 382
+
+  * Matz
+  * 55 main C code
+  * parse and translate Ruby code into AST (abstract syntax tree)
+  * lex.c and parse.y
+  * AST tree is being executed by eval.c
+  * other 50 or so c files define the basic classes: Object, Module, ... etc
+    - with init code that sets the class hierarchy: 
+
+    rb_cObject = boot_defclass("Object", 0);
+    rb_cModule = boot_defclass("Module", rb_cObject);
+    rb_cClass =  boot_defclass("Class",  rb_cModule);
+
+  * example: MRI equality check
+  * Array map! method (collect!) example
+
+- YARV: MRI with a Byte Code Turbocharger 385
+
+  * next generation of MRI
+  * similar to MRI
+  * add support for 1.9 syntax, such as BasicObject
+  * after parsing Ruby source into AST, YARV turns it into bytecode, which gets excuted
+  * bytecode is dramatically faster than MRI
+
+- JRuby: Bending the “J” in the JVM 387
+
+  * adopt Ruby to existing JVM
+  * Java code
+  * more or less the same code
+
+- Rubinius 388
+
+  * self-hosting: parsing/writing/excuting Ruby on Ruby
+  * not finished yet
+
+- In the Wild 389
+
+  * extend the implementation
+    - C in MRI/YARV
+      (see README.EXT file)
+    - Java in JRuby
+
+- Staying Out of Trouble 389
+
+  * sometime too much lower knowledge will distract you from seeing the bigger picture
+  * use the power of abstraction if works
+  * don't do premature optimization
+
+- Wrapping Up 390
+
+  * lower level knowledge helps you to be better programmer
 
 -----------------------------------------------------------
 Chapter 31: Keep an Open Mind to Go with Those Open Classes 391
 -----------------------------------------------------------
+
+  * this book has a lot of rules
+  * really learn a tool is not only learning the rules
+  * break any of these rules sooner than say anything outright barbarous.
 
 Appendix: Going Further 393
